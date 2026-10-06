@@ -54,7 +54,9 @@ export function localEnvironment(
   return {
     ...env,
     ...values,
-    APP_URL: 'http://localhost:3000',
+    APP_URL: z
+      .enum(['http://localhost:3000', 'https://krilles-privat.tailce50d4.ts.net:3000'])
+      .parse(inherited.CALENDAR_APP_URL ?? 'http://localhost:3000'),
     NODE_ENV: 'development',
     PORT: '3000',
   }

@@ -17,6 +17,14 @@ pnpm dev --environment production
 
 The local app runs at `http://localhost:3000`. Startup reads service variables using the Railway CLI, verifies project/environment/service metadata, generates `apps/web/src/env.generated.ts` from variable **names only**, and opens an authenticated SSH tunnel to the private PostgreSQL service. Values remain in memory and pass to the child process. No dotenv files are written or loaded. T3 Env validates the app's server configuration.
 
+When using the existing Tailscale HTTPS proxy, select its origin at startup so OAuth callbacks and shared links use the same address as your browser:
+
+```sh
+CALENDAR_APP_URL=https://krilles-privat.tailce50d4.ts.net:3000 pnpm dev --environment production
+```
+
+Open the Tailscale address for that session. Register its Google callback alongside the localhost and production callbacks, as described in [operations](docs/operations.md).
+
 Register your SSH public key with Railway and trust its SSH host through the normal interactive SSH setup first. `CALENDAR_SSH_IDENTITY` can select a specific private-key file. The launcher checks the selected database's URL, SSH target and database identity before starting the app. It stops its tunnel when the app stops.
 
 ```sh

@@ -55,8 +55,13 @@ describe('Railway startup configuration', () => {
         BETTER_AUTH_SECRET: 'wrong-local-secret',
       },
     )
-    expect(env.APP_URL).toBe('http://localhost:4310')
+    expect(env.APP_URL).toBe('http://localhost:3000')
     expect(env.BETTER_AUTH_SECRET).toBe('remote-secret')
     expect(env.RAILWAY_TOKEN).toBeUndefined()
+  })
+  it('uses the selected Tailscale origin and rejects unexpected local origins', () => {
+    const origin = 'https://krilles-privat.tailce50d4.ts.net:3000'
+    expect(localEnvironment({}, { CALENDAR_APP_URL: origin }).APP_URL).toBe(origin)
+    expect(() => localEnvironment({}, { CALENDAR_APP_URL: 'https://untrusted.example' })).toThrow()
   })
 })
