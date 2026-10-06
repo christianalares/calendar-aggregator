@@ -1,0 +1,15 @@
+node_modules/
+.turbo/
+.output/
+.nitro/
+dist/
+coverage/
+test-results/
+playwright-report/
+.env
+.env.*
+!.env.example
+.railway-plans/
+.local/
+*.log
+.DS_Store

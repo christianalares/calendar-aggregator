@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  '@railway/cli': true
+  esbuild: true
+minimumReleaseAgeExclude:
+  - nitro-nightly@3.0.1-20261006-045005-6bb682ef
+  - vite@8.3.3

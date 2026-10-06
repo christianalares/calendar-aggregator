@@ -1,0 +1,49 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "apps/web/src/**",
+      "apps/web/*.ts",
+      "packages/db/src/**",
+      "packages/db/*.ts",
+      "scripts/**",
+      "tests/**",
+      "*.json",
+      "*.ts",
+      ".railway/**",
+      "!**/routeTree.gen.ts",
+      "!**/env.generated.ts",
+      "!**/drizzle/meta"
+    ]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["tests/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noNonNullAssertion": "off"
+          }
+        }
+      }
+    }
+  ]
+}
