@@ -18,6 +18,11 @@ export default defineConfig(
       tanstackStart(),
       react(),
     ],
-    server: { host: '127.0.0.1', port: 3000, strictPort: true },
+    server: {
+      host: '127.0.0.1',
+      port: 3000,
+      strictPort: true,
+      allowedHosts: ['krilles-privat.tailce50d4.ts.net'],
+    },
   }),
 )
