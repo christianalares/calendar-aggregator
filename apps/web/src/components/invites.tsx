@@ -1,5 +1,20 @@
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { Copy, Plus } from 'lucide-react'
 import { useState } from 'react'
+import { pushAlert } from '@/components/alerts'
+import { SectionHeader } from '@/components/section-header'
+import { StatusBadge } from '@/components/status-badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { queryOptions } from '../queries'
 import { serverFns } from '../server-fns'
 
@@ -8,17 +23,9 @@ export function Invites({ ownerId, baseURL }: { ownerId: string; baseURL: string
   const [message, setMessage] = useState('')
   const createInviteMutation = useMutation({
     mutationFn: serverFns.invitations.create,
-    onSuccess: (_data, _variables, _result, context) => {
-      return context.client.invalidateQueries(queryOptions.invitations.list(ownerId))
-    },
+    onSuccess: (_data, _variables, _result, context) =>
+      context.client.invalidateQueries(queryOptions.invitations.list(ownerId)),
   })
-  const revokeInviteMutation = useMutation({
-    mutationFn: serverFns.invitations.revoke,
-    onSuccess: (_data, _variables, _result, context) => {
-      return context.client.invalidateQueries(queryOptions.invitations.list(ownerId))
-    },
-  })
-
   async function copy(token: string) {
     try {
       await navigator.clipboard.writeText(`${baseURL}/invite/${token}`)
@@ -27,63 +34,103 @@ export function Invites({ ownerId, baseURL }: { ownerId: string; baseURL: string
       setMessage('Could not copy. Select the link below to copy it manually.')
     }
   }
-
   return (
-    <section className="panel">
-      <div className="section-header">
-        <div>
-          <h2>Invites</h2>
-          <p>A little calendar club, by invitation.</p>
-        </div>
-        <button
-          type="button"
-          className="primary"
-          disabled={createInviteMutation.isPending}
-          onClick={() => createInviteMutation.mutate()}
-        >
-          Create invite
-        </button>
-      </div>
-      {message && <output>{message}</output>}
-      {(createInviteMutation.error || revokeInviteMutation.error) && (
-        <p role="alert" className="error">
+    <section aria-label="Invites" className="min-w-0">
+      <SectionHeader
+        title="Invites"
+        count={invites.length}
+        description="A calendar corner for you and your pals."
+        action={
+          <Button
+            disabled={createInviteMutation.isPending}
+            onClick={() => createInviteMutation.mutate()}
+          >
+            <Plus aria-hidden="true" />
+            Create invite
+          </Button>
+        }
+      />
+      {message && <output className="mb-3 block text-sm text-muted-foreground">{message}</output>}
+      {createInviteMutation.error && (
+        <p role="alert" className="mb-3 text-sm text-destructive">
           Could not update invitations. Please try again.
         </p>
       )}
-      {invites.length === 0 && (
-        <p className="empty">No invitations yet. Create one and send the link to a friend.</p>
-      )}
-      {invites.map((invite) => (
-        <div className="invite-row" key={invite.id}>
-          <div>
-            <strong>
-              {invite.usedAt ? 'Used' : invite.revokedAt ? 'Revoked' : 'Ready to share'}
-            </strong>
-            <p>{invite.usedBy ?? `Created ${new Date(invite.createdAt).toLocaleDateString()}`}</p>
-            {!invite.usedAt && !invite.revokedAt && (
-              <input
-                aria-label="Invitation URL"
-                readOnly
-                value={`${baseURL}/invite/${invite.token}`}
-              />
+      <Card className="gap-0 overflow-hidden py-0">
+        <Table aria-label="Invites">
+          <TableHeader>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="pl-4">Created</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Used by</TableHead>
+              <TableHead>Invitation link</TableHead>
+              <TableHead className="pr-4 text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {!invites.length && (
+              <TableRow>
+                <TableCell
+                  colSpan={5}
+                  className="whitespace-normal px-4 py-8 text-center text-muted-foreground"
+                >
+                  No invitations yet. Create one and send the link to a friend.
+                </TableCell>
+              </TableRow>
             )}
-          </div>
-          {!invite.usedAt && !invite.revokedAt && (
-            <div className="actions">
-              <button type="button" onClick={() => copy(invite.token)}>
-                Copy link
-              </button>
-              <button
-                type="button"
-                disabled={revokeInviteMutation.isPending}
-                onClick={() => revokeInviteMutation.mutate({ data: { id: invite.id } })}
-              >
-                Revoke
-              </button>
-            </div>
-          )}
-        </div>
-      ))}
+            {invites.map((invite) => {
+              const available = !invite.usedAt && !invite.revokedAt
+              return (
+                <TableRow key={invite.id}>
+                  <TableCell className="py-3 pl-4 text-xs tabular-nums text-muted-foreground">
+                    {new Date(invite.createdAt).toLocaleDateString(undefined, {
+                      dateStyle: 'medium',
+                    })}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge
+                      tone={available ? 'warning' : invite.usedAt ? 'success' : 'neutral'}
+                    >
+                      {invite.usedAt ? 'Used' : invite.revokedAt ? 'Revoked' : 'Ready to share'}
+                    </StatusBadge>
+                  </TableCell>
+                  <TableCell className="text-sm">{invite.usedBy ?? '—'}</TableCell>
+                  <TableCell>
+                    {available ? (
+                      <Input
+                        aria-label="Invitation URL"
+                        readOnly
+                        value={`${baseURL}/invite/${invite.token}`}
+                        onFocus={(event) => event.target.select()}
+                        className="min-w-44 max-w-72 text-xs text-muted-foreground"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No longer active</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="pr-4">
+                    {available && (
+                      <div className="flex justify-end gap-1">
+                        <Button variant="outline" size="sm" onClick={() => copy(invite.token)}>
+                          <Copy aria-hidden="true" />
+                          Copy link
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => pushAlert('revokeInvite', { ownerId, id: invite.id })}
+                        >
+                          Revoke
+                        </Button>
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </Card>
     </section>
   )
 }

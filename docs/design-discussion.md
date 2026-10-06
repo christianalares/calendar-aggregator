@@ -1,5 +1,27 @@
 # Design discussion
 
+## Dashboard design direction, 2026-10-06
+
+The user subsequently approved implementing this layout in the working application. Calendar cards, source/invite tables, and consistent section actions are now migrated to shadcn Base UI.
+
+- Keep calendars, sources, and operator-only invitations on one page. Use a responsive calendar card grid that accommodates eight calendars, with three, two, or one column according to available width.
+- Give all three sections the same header pattern: title and count on the left, a primary create/add button on the right.
+- Show sources and invitations as tables. Sources expose URL, status, last attempt, and last success directly. Put Check, Edit, and Delete inside each source's ellipsis actions menu.
+- Use shadcn/ui for the production UI. The green visual direction is rejected. The first implemented theme uses cobalt primary actions, neutral surfaces, Nunito headings, and Nunito Sans body text. Small teal/amber/coral status accents add color without filling every card. Light, dark, and system appearance are available.
+- The user subsequently selected the supplied dashboard/calendar reference colors for light and dark. The current palette uses a cool gray canvas, white cards, navy ink, vivid blue actions, and soft blue/cyan/peach/rose/violet/mint source labels. Dark mode carries the same hues on charcoal surfaces. Mint remains a supporting source/health color; blue is the brand color. Theme colors live together in `apps/web/src/theme.css` for quick iteration.
+- Explore calendar Preview as a modal so it does not expand individual cards. The implemented preview has a read-only month grid, selected-day entries, and an all-entries view. It marks only start dates present in the bounded raw feed sample and explains that calendar apps expand recurring series. A full calendar editor and recurrence expansion remain outside this change.
+
+### Required overlay architecture
+
+The user requires the same package and folder structure as Vitalplus. Its backoffice app was inspected and uses `pushmodal` and `createPushModal` with separate registries:
+
+- `apps/web/src/components/modals/index.tsx`: register named modal components and export `pushModal`, `popModal`, and `ModalProvider`. Create/edit forms and calendar previews belong in this directory.
+- `apps/web/src/components/sheets/index.tsx`: register sheets with the shadcn `Sheet` wrapper and export `pushSheet`, `popSheet`, and `SheetProvider` when sheets are introduced.
+- `apps/web/src/components/alerts/index.tsx`: register confirmations with the shadcn `AlertDialog` wrapper and export `pushAlert`, `popAlert`, and `AlertProvider`. Deleting sources/calendars, replacing subscription links, and revoking invitations use this pattern.
+- Mount the providers in the application root. Open and close overlays through the registered functions rather than defining dialogs or managing their open state inline in pages or feature components.
+
+The UI foundation is now installed using shadcn's Base UI primitives, with explicit Base UI adapters for `pushmodal`. Existing forms and previews use the modal registry, and destructive confirmations use the alert registry. The sheet registry is ready for future features. See [UI foundation](ui-foundation.md) for setup and usage. The grid/table redesign and first CalPal theme are now implemented in the application, including the login screen. The original visual references remain in the theme capture.
+
 This document records agreements from the grill-with-docs discussion. It is not an approved implementation specification. The pasted build prompt is input to the discussion; its remaining requirements and technology suggestions have not been approved as a whole.
 
 ## Session status

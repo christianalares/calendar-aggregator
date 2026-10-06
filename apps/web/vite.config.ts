@@ -1,3 +1,4 @@
+import tailwindcss from '@tailwindcss/vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
 import { createNitro } from 'nitro/builder'
@@ -9,6 +10,7 @@ export default defineConfig(
     envDir: false,
     resolve: { tsconfigPaths: true },
     plugins: [
+      tailwindcss(),
       nitro({
         _nitro: await createNitro(
           { dev: command === 'serve', builder: 'vite', rootDir: process.cwd() },

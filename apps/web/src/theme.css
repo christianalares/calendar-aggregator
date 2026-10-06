@@ -1,0 +1,113 @@
+/* CalPal palette, sampled from the supplied dashboard/calendar references.
+   Edit light and dark values here to try colors across the whole application. */
+:root {
+  color-scheme: light;
+  --background: #ececf0;
+  --foreground: #090838;
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+  --primary: #155bff;
+  --primary-hover: #104bdb;
+  --primary-foreground: #ffffff;
+  --secondary: #f7f6f9;
+  --secondary-foreground: #42425c;
+  --muted: #f7f6f9;
+  --muted-foreground: #646477;
+  --accent: #eaf1fd;
+  --accent-foreground: #1248c2;
+  --destructive: #b4232e;
+  --border: #e5e5ec;
+  --input: #c6c6d3;
+  --ring: #155bff;
+  --radius: 0.625rem;
+
+  --category-blue: #eaf1fd;
+  --category-blue-foreground: #103d72;
+  --category-blue-marker: #2586df;
+  --category-cyan: #d9f4fc;
+  --category-cyan-foreground: #075a70;
+  --category-cyan-marker: #10a5c5;
+  --category-peach: #fff0e7;
+  --category-peach-foreground: #7d391b;
+  --category-peach-marker: #e88851;
+  --category-rose: #f9e6f1;
+  --category-rose-foreground: #75204b;
+  --category-rose-marker: #c767a4;
+  --category-violet: #eee6fa;
+  --category-violet-foreground: #513378;
+  --category-violet-marker: #9270c3;
+  --category-mint: #e5f4eb;
+  --category-mint-foreground: #205b43;
+  --category-mint-marker: #68a482;
+
+  --warning-bg: #fdf5df;
+  --warning-fg: #79500c;
+  --danger-bg: #fcecec;
+  --danger-fg: #861e26;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #18181d;
+  --foreground: #f3f3fa;
+  --card: #222228;
+  --popover: #292930;
+  --primary: #84a8ff;
+  --primary-hover: #9cbbff;
+  --primary-foreground: #101a37;
+  --secondary: #2c2c34;
+  --secondary-foreground: #e0e0ee;
+  --muted: #2c2c34;
+  --muted-foreground: #b1b1c3;
+  --accent: #273650;
+  --accent-foreground: #a8c6ff;
+  --destructive: #ff9da5;
+  --border: #3b3b47;
+  --input: #545466;
+  --ring: #84a8ff;
+
+  --category-blue: #23344b;
+  --category-blue-foreground: #afd2ff;
+  --category-blue-marker: #78b7ff;
+  --category-cyan: #193b45;
+  --category-cyan-foreground: #9ce2f3;
+  --category-cyan-marker: #64cde6;
+  --category-peach: #463127;
+  --category-peach-foreground: #ffc6a5;
+  --category-peach-marker: #f5ab7f;
+  --category-rose: #432c3d;
+  --category-rose-foreground: #f3b5da;
+  --category-rose-marker: #e99dc9;
+  --category-violet: #352d49;
+  --category-violet-foreground: #d6bff7;
+  --category-violet-marker: #b99ae5;
+  --category-mint: #253c32;
+  --category-mint-foreground: #acdfc1;
+  --category-mint-marker: #8ac5a4;
+
+  --warning-bg: #433820;
+  --warning-fg: #f6d68d;
+  --danger-bg: #472b30;
+  --danger-fg: #ffb4ba;
+}
+
+:root,
+.dark {
+  --success-bg: var(--category-mint);
+  --success-fg: var(--category-mint-foreground);
+  --chart-1: var(--category-blue-marker);
+  --chart-2: var(--category-cyan-marker);
+  --chart-3: var(--category-peach-marker);
+  --chart-4: var(--category-rose-marker);
+  --chart-5: var(--category-violet-marker);
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+}

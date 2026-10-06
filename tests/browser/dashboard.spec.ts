@@ -8,6 +8,7 @@ import {
   authSessions,
   authUsers,
   connectDatabase,
+  invitations,
   members,
   sources,
 } from '../../packages/db/src/index'
@@ -17,14 +18,17 @@ const { db } = connection
 const store = createCalendarStore(db)
 test.afterAll(() => connection.close())
 
-async function sessionCookie(admitted: boolean) {
-  const id = randomUUID()
+async function sessionCookie(
+  admitted: boolean,
+  role: 'member' | 'operator' = 'member',
+  id = randomUUID(),
+) {
   const token = randomBytes(32).toString('hex')
   await db
     .insert(authUsers)
     .values({ id, name: 'Other identity', email: `${id}@example.test`, emailVerified: true })
   if (admitted) {
-    await db.insert(members).values({ userId: id, role: 'member' })
+    await db.insert(members).values({ userId: id, role })
   }
   await db
     .insert(authSessions)
@@ -81,7 +85,17 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
   expect(anonymous.url()).toContain('/login')
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'All together, at last.' })).toBeVisible()
-  await page.getByRole('button', { name: '+ Add source' }).click()
+  // Registered dialogs must restore focus and reset form state when reopened.
+  const addSource = page.getByRole('button', { name: 'Add source', exact: true })
+  await addSource.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused()
+  await page.getByLabel('Name', { exact: true }).fill('Unsaved source')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(addSource).toBeFocused()
+  await page.getByRole('button', { name: 'Add source', exact: true }).click()
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('')
   await page.getByLabel('Name', { exact: true }).fill('Football')
   await page
     .getByLabel('Calendar subscription URL')
@@ -127,9 +141,20 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
     data: savedRequest.postData(),
   })
   expect(csrfResponse.status()).toBe(403)
-  await page.getByRole('button', { name: '+ Create calendar' }).click()
+  await page.getByRole('button', { name: 'Actions for source Football' }).click()
+  await page.getByRole('menuitem', { name: 'Edit', exact: true }).click()
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Football')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Actions for source Football' })).toBeFocused()
+  await page.getByRole('button', { name: 'Actions for source Football' }).click()
+  await page.getByRole('menuitem', { name: 'Delete', exact: true }).click()
+  await expect(page.getByRole('alertdialog')).toBeVisible()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(page.getByRole('alertdialog')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Create calendar', exact: true }).click()
   await page.getByLabel('Calendar name').fill('Our week')
-  await page.getByLabel('Football', { exact: true }).check()
+  await page.getByRole('checkbox', { name: 'Football', exact: true }).check()
   await page.getByLabel('Prefix for Football').fill('⚽')
   await page.getByRole('button', { name: 'Save calendar', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -152,8 +177,25 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
   expect(feed.status()).toBe(200)
   expect(feed.headers()['content-type']).toContain('text/calendar')
   expect(parseCalendar(await feed.text()).getAllSubcomponents('vevent')).toHaveLength(4)
-  await page.getByRole('button', { name: 'Preview events ↓' }).click()
+  await page.getByRole('button', { name: 'Preview events', exact: true }).click()
   await expect(page.getByText('⚽ Fotboll', { exact: true })).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: 'All entries', exact: true }).click()
+  await expect(page.getByText('⚽ Later football', { exact: true })).toBeVisible()
+  await expect(page.getByText('Cancelled', { exact: true })).toBeVisible()
+  expect(
+    await page
+      .getByRole('dialog')
+      .evaluate((element) => element.scrollWidth <= element.clientWidth),
+  ).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('calendar-preview.png'), fullPage: true })
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /October 10/ })
+    .click()
+  await expect(page.getByText('⚽ Weekend away', { exact: true })).toBeVisible()
+  await expect(page.getByText('⚽ Fotboll', { exact: true })).toHaveCount(0)
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Create invite', exact: true }).click()
   await expect(page.getByRole('textbox', { name: 'Invitation URL' })).toBeVisible()
   const memberInvite = await request.post(savedRequest.url(), {
@@ -162,13 +204,25 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
   })
   expect(await memberInvite.text()).toContain('Only the operator can create invitations')
   await page.getByRole('button', { name: 'Revoke', exact: true }).click()
+  const revokeDialog = page.getByRole('alertdialog')
+  await expect(revokeDialog).toBeVisible()
+  await revokeDialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'Invitation URL' })).toBeVisible()
+  await page.getByRole('button', { name: 'Revoke', exact: true }).click()
+  await revokeDialog.getByRole('button', { name: 'Revoke invitation', exact: true }).click()
+  await expect(revokeDialog).toHaveCount(0)
   await expect(page.getByText('Revoked', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('dashboard.png'), fullPage: true })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   )
-  page.once('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: 'Replace link', exact: true }).click()
+  await page.getByRole('button', { name: 'Actions for calendar Our week' }).click()
+  await page.getByRole('menuitem', { name: 'Replace link', exact: true }).click()
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Replace link', exact: true })
+    .click()
+  await expect(page.getByRole('alertdialog')).toHaveCount(0)
   await expect
     .poll(() => page.getByRole('textbox', { name: 'Subscription URL', exact: true }).inputValue())
     .not.toBe(url)
@@ -182,4 +236,137 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
   await page.goto('/')
   await expect(page).toHaveURL(/\/login/)
   expect(errors).toEqual([])
+})
+
+test('eight calendars, source health, invite table and persistent appearance', async ({
+  page,
+  context,
+}, testInfo) => {
+  const ownerId = randomUUID()
+  const cookie = await sessionCookie(true, 'operator', ownerId)
+  await context.addCookies([
+    {
+      name: 'better-auth.session_token',
+      value: cookie.slice(cookie.indexOf('=') + 1),
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ])
+  const names = ['Padel Royale', 'Family events', 'Work meetings', 'Training']
+  const sourceIds: string[] = []
+  for (const [index, name] of names.entries()) {
+    const { id } = await store.saveSource(ownerId, {
+      name,
+      url: `https://provider.test/${index}/calendar-subscription.ics`,
+      enabled: index !== 3,
+    })
+    sourceIds.push(id)
+    await db
+      .update(sources)
+      .set({
+        lastAttemptAt: new Date('2026-10-06T12:20:00Z'),
+        lastSuccessAt: index < 2 ? new Date('2026-10-06T12:00:00Z') : null,
+        lastError:
+          index === 1
+            ? 'Latest fetch failed. Previous data is retained.'
+            : index === 2
+              ? 'Could not reach the source.'
+              : null,
+      })
+      .where(eq(sources.id, id))
+  }
+  for (const [index, name] of [
+    'Padel',
+    'Family',
+    'Work',
+    'Training',
+    'School',
+    'Trips',
+    'Community',
+    'Personal',
+  ].entries()) {
+    await store.saveOutput(ownerId, {
+      name,
+      sources: [
+        { sourceId: sourceIds[index % 4]!, prefix: '' },
+        { sourceId: sourceIds[(index + 1) % 4]!, prefix: '' },
+      ],
+    })
+  }
+  const friendId = randomUUID()
+  await db.insert(authUsers).values({
+    id: friendId,
+    name: 'A pal',
+    email: `pal-${friendId}@example.test`,
+    emailVerified: true,
+  })
+  await db.insert(invitations).values([
+    { id: randomUUID(), creatorId: ownerId, token: randomBytes(32).toString('hex') },
+    {
+      id: randomUUID(),
+      creatorId: ownerId,
+      token: randomBytes(32).toString('hex'),
+      usedAt: new Date(),
+      usedBy: friendId,
+    },
+    {
+      id: randomUUID(),
+      creatorId: ownerId,
+      token: randomBytes(32).toString('hex'),
+      revokedAt: new Date(),
+    },
+  ])
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Personal', exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('table', { name: 'Sources', exact: true }).getByRole('row'),
+  ).toHaveCount(5)
+  for (const status of ['Healthy', 'Using older data', 'Unavailable', 'Disabled'])
+    await expect(page.getByText(status, { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('table', { name: 'Invites', exact: true }).getByRole('row'),
+  ).toHaveCount(4)
+  await expect(page.getByText(`pal-${friendId}@example.test`, { exact: true })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Subscription URL', exact: true })).toHaveCount(8)
+  const healthyColor = await page
+    .getByText('Healthy', { exact: true })
+    .evaluate((element) => getComputedStyle(element).backgroundColor)
+  const disabledColor = await page
+    .getByText('Disabled', { exact: true })
+    .evaluate((element) => getComputedStyle(element).backgroundColor)
+  expect(healthyColor).not.toBe(disabledColor)
+  const grid = page.getByTestId('calendar-grid')
+  const columns = () =>
+    grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length)
+  if (testInfo.project.name === 'desktop') {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await expect.poll(columns).toBe(3)
+    await page.screenshot({
+      path: testInfo.outputPath('eight-calendars-light.png'),
+      fullPage: true,
+    })
+    await page.setViewportSize({ width: 800, height: 900 })
+    await expect.poll(columns).toBe(2)
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect.poll(columns).toBe(1)
+    await page.setViewportSize({ width: 1280, height: 900 })
+  } else {
+    await expect.poll(columns).toBe(1)
+    await page.screenshot({
+      path: testInfo.outputPath('eight-calendars-light.png'),
+      fullPage: true,
+    })
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  )
+  await page.getByRole('button', { name: 'Appearance', exact: true }).click()
+  await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click()
+  await expect(page.locator('html')).toHaveClass('dark')
+  await page.reload()
+  await expect(page.locator('html')).toHaveClass('dark')
+  await expect(page.getByRole('heading', { name: 'Padel', exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('eight-calendars-dark.png'), fullPage: true })
 })

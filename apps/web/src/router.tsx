@@ -11,7 +11,7 @@ export function getRouter() {
     context: { queryClient },
     scrollRestoration: true,
     defaultPendingComponent: () => (
-      <main className="container">
+      <main className="page-shell py-8 text-muted-foreground">
         <p>Loading your calendars...</p>
       </main>
     ),

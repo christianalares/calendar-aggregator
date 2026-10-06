@@ -1,48 +1,43 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import {
+  CalendarDays,
+  Check,
+  Copy,
+  Ellipsis,
+  Eye,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from 'lucide-react'
+import { useState } from 'react'
+import { pushAlert } from '@/components/alerts'
+import { ErrorMessage } from '@/components/error-message'
+import { pushModal } from '@/components/modals'
+import { SectionHeader } from '@/components/section-header'
+import { SourceBadge, SourceMarker } from '@/components/source-badge'
+import { StatusBadge } from '@/components/status-badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import type { Output, Source } from '@/lib/calendar-types'
 import { mutationOptions } from '../mutations'
 import { queryOptions } from '../queries'
-import type { MutationOutput } from '../server-fns'
-
-type Calendars = MutationOutput['calendars']['list']
-type Source = Calendars['sources'][number]
-type Output = Calendars['outputs'][number]
-
-function Modal({
-  title,
-  children,
-  onClose,
-}: {
-  title: string
-  children: ReactNode
-  onClose: () => void
-}) {
-  const dialog = useRef<HTMLDialogElement>(null)
-  const titleId = useId()
-  useEffect(() => {
-    dialog.current?.showModal()
-  }, [])
-
-  return (
-    <dialog ref={dialog} onCancel={onClose} aria-labelledby={titleId}>
-      <div className="dialog-heading">
-        <h2 id={titleId}>{title}</h2>
-        <button type="button" className="icon-button" aria-label="Close" onClick={onClose}>
-          ×
-        </button>
-      </div>
-      {children}
-    </dialog>
-  )
-}
-
-function ErrorMessage({ error }: { error: Error | null }) {
-  return error ? (
-    <p role="alert" className="error">
-      {error.message || 'Could not save. Please try again.'}
-    </p>
-  ) : null
-}
 
 function time(value: Date | null) {
   return value
@@ -50,203 +45,19 @@ function time(value: Date | null) {
     : 'Not checked yet'
 }
 
-function SourceForm({
-  ownerId,
-  source,
-  onClose,
-}: {
-  ownerId: string
-  source?: Source
-  onClose: () => void
-}) {
-  const [name, setName] = useState(source?.name ?? '')
-  const [url, setURL] = useState(source?.url ?? '')
-  const [enabled, setEnabled] = useState(source?.enabled ?? true)
-  const saveSourceMutation = useMutation(mutationOptions.sources.save(ownerId))
-
-  return (
-    <Modal title={source ? 'Edit source' : 'Add a source'} onClose={onClose}>
-      <form
-        onSubmit={async (event) => {
-          event.preventDefault()
-
-          try {
-            await saveSourceMutation.mutateAsync({ data: { id: source?.id, name, url, enabled } })
-            onClose()
-          } catch {
-            /* Mutation state displays the error; keep the form intact. */
-          }
-        }}
-      >
-        <label>
-          Name
-          <input
-            required
-            maxLength={100}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Family, football, work..."
-          />
-        </label>
-        <label>
-          Calendar subscription URL
-          <input
-            required
-            type="url"
-            maxLength={4096}
-            value={url}
-            onChange={(event) => setURL(event.target.value)}
-            placeholder="https://example.com/calendar.ics"
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </label>
-        <p className="hint">
-          Use an iCalendar subscription link from your calendar provider. This address stays private
-          in your account.
-        </p>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(event) => setEnabled(event.target.checked)}
-          />
-          Include this source in calendars
-        </label>
-        <ErrorMessage error={saveSourceMutation.error} />
-        <div className="form-actions">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="primary" disabled={saveSourceMutation.isPending}>
-            {saveSourceMutation.isPending ? 'Saving...' : 'Save source'}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
-function OutputForm({
-  ownerId,
-  output,
-  sources,
-  onClose,
-}: {
-  ownerId: string
-  output?: Output
-  sources: Source[]
-  onClose: () => void
-}) {
-  const [name, setName] = useState(output?.name ?? '')
-  const [selected, setSelected] = useState(
-    output?.sources.map((source) => ({ sourceId: source.sourceId, prefix: source.prefix })) ?? [],
-  )
-  const saveOutputMutation = useMutation(mutationOptions.outputs.save(ownerId))
-
-  return (
-    <Modal title={output ? 'Edit calendar' : 'Create a calendar'} onClose={onClose}>
-      <form
-        onSubmit={async (event) => {
-          event.preventDefault()
-
-          try {
-            await saveOutputMutation.mutateAsync({
-              data: { id: output?.id, name, sources: selected },
-            })
-            onClose()
-          } catch {
-            /* Keep entered values so the owner can retry. */
-          }
-        }}
-      >
-        <label>
-          Calendar name
-          <input
-            required
-            maxLength={100}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Our week"
-          />
-        </label>
-        <fieldset>
-          <legend>Sources to include</legend>
-          <p className="hint">Choose whole calendars and give each one a title prefix.</p>
-          {!sources.length && (
-            <p className="empty">Add a source first, or save an empty calendar for later.</p>
-          )}
-          {sources.map((source) => {
-            const membership = selected.find((item) => item.sourceId === source.id)
-
-            return (
-              <div className="membership" key={source.id}>
-                <label className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(membership)}
-                    onChange={(event) => {
-                      setSelected((previous) =>
-                        event.target.checked
-                          ? [...previous, { sourceId: source.id, prefix: '' }]
-                          : previous.filter((item) => item.sourceId !== source.id),
-                      )
-                    }}
-                  />
-                  {source.name}
-                  {!source.enabled && <span className="badge muted">Disabled</span>}
-                </label>
-                <input
-                  aria-label={`Prefix for ${source.name}`}
-                  placeholder="Prefix, e.g. ⚽"
-                  disabled={!membership}
-                  maxLength={100}
-                  value={membership?.prefix ?? ''}
-                  onChange={(event) => {
-                    setSelected((previous) =>
-                      previous.map((item) =>
-                        item.sourceId === source.id
-                          ? { ...item, prefix: event.target.value }
-                          : item,
-                      ),
-                    )
-                  }}
-                />
-              </div>
-            )
-          })}
-        </fieldset>
-        <ErrorMessage error={saveOutputMutation.error} />
-        <div className="form-actions">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="primary" disabled={saveOutputMutation.isPending}>
-            {saveOutputMutation.isPending ? 'Saving...' : 'Save calendar'}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
 function CopyLink({ url }: { url: string }) {
   const [message, setMessage] = useState('')
-
   return (
-    <div className="subscription">
-      <label className="sr-only" htmlFor={`link-${url.split('/').at(-1)}`}>
-        Subscription URL
-      </label>
-      <input
-        id={`link-${url.split('/').at(-1)}`}
+    <div className="flex min-w-0 gap-2">
+      <Input
         aria-label="Subscription URL"
         readOnly
         value={url}
+        className="min-w-0 flex-1 text-xs text-muted-foreground"
         onFocus={(event) => event.target.select()}
       />
-      <button
-        type="button"
+      <Button
+        variant="outline"
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(url)
@@ -256,88 +67,10 @@ function CopyLink({ url }: { url: string }) {
           }
         }}
       >
-        {message === 'Copied' ? 'Copied ✓' : 'Copy link'}
-      </button>
+        {message === 'Copied' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+        {message === 'Copied' ? 'Copied' : 'Copy link'}
+      </Button>
       {message && <output className="sr-only">{message}</output>}
-    </div>
-  )
-}
-
-function Preview({ ownerId, output }: { ownerId: string; output: Output }) {
-  const previewQuery = useQuery(queryOptions.outputs.preview(ownerId, output.id))
-  const client = useQueryClient()
-  useEffect(() => {
-    if (previewQuery.dataUpdatedAt) {
-      void client.invalidateQueries(queryOptions.calendars.list(ownerId))
-    }
-  }, [previewQuery.dataUpdatedAt, client, ownerId])
-
-  return (
-    <div className="preview">
-      <div className="section-header">
-        <h3>Event preview</h3>
-        <button
-          type="button"
-          disabled={previewQuery.isFetching}
-          onClick={() => previewQuery.refetch()}
-        >
-          Refresh
-        </button>
-      </div>
-      <p className="hint">
-        A sample of events in the feed. Your calendar app expands recurring series.
-      </p>
-      {previewQuery.isPending && <p>Checking sources...</p>}
-      {previewQuery.error && (
-        <>
-          <ErrorMessage error={previewQuery.error} />
-          <button type="button" onClick={() => previewQuery.refetch()}>
-            Try again
-          </button>
-        </>
-      )}
-      {previewQuery.data && (
-        <>
-          {previewQuery.data.health
-            .filter((source) => source.status !== 'healthy')
-            .map((source) => (
-              <p className="notice" key={source.id}>
-                {source.name}:{' '}
-                {source.status === 'stale'
-                  ? 'Showing last successful data.'
-                  : 'No usable data yet.'}{' '}
-                {source.error}
-              </p>
-            ))}
-          {!previewQuery.data.events.length && (
-            <p className="empty">No events in this calendar yet.</p>
-          )}
-          {previewQuery.data.events.map((event, index) => (
-            <div className="event-row" key={`${event.uid}-${index}`}>
-              <span className="event-date">
-                {event.start
-                  ? event.allDay
-                    ? event.start
-                    : new Date(event.start).toLocaleString(undefined, {
-                        dateStyle: 'medium',
-                        timeStyle: 'short',
-                      })
-                  : 'No start date'}
-                {event.allDay && <small>All day</small>}
-              </span>
-              <div>
-                <strong>{event.title}</strong>
-                {event.location && <p>{event.location}</p>}
-                <div className="tags">
-                  {event.recurring && <span>Recurring</span>}
-                  {event.exception && <span>Changed instance</span>}
-                  {event.cancelled && <span>Cancelled</span>}
-                </div>
-              </div>
-            </div>
-          ))}
-        </>
-      )}
     </div>
   )
 }
@@ -347,146 +80,154 @@ function OutputCard({
   baseURL,
   output,
   sources,
-  onEdit,
 }: {
   ownerId: string
   baseURL: string
   output: Output
   sources: Source[]
-  onEdit: () => void
 }) {
-  const [preview, setPreview] = useState(false)
-  const rotateOutputMutation = useMutation(mutationOptions.outputs.rotate(ownerId))
-  const removeOutputMutation = useMutation(mutationOptions.outputs.remove(ownerId))
-
   return (
-    <article className="calendar-card">
-      <div className="section-header">
-        <div className="calendar-title">
-          <span className="calendar-icon" aria-hidden="true">
-            ▦
-          </span>
-          <div>
-            <h3>{output.name}</h3>
-            <p>
-              {output.sources.length} {output.sources.length === 1 ? 'source' : 'sources'} ·
-              Read-only subscription
-            </p>
+    <article className="min-w-0">
+      <Card className="h-full gap-4">
+        <CardContent className="flex flex-1 flex-col gap-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
+                <CalendarDays aria-hidden="true" className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <h3 className="break-words font-heading text-lg font-bold leading-tight">
+                  {output.name}
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {output.sources.length} {output.sources.length === 1 ? 'source' : 'sources'} ·
+                  Subscription
+                </p>
+              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Actions for calendar ${output.name}`}
+                  />
+                }
+              >
+                <Ellipsis aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-44">
+                <DropdownMenuItem
+                  onClick={() => pushModal('calendar', { ownerId, sources, output })}
+                >
+                  <Pencil aria-hidden="true" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => pushAlert('replaceCalendarLink', { ownerId, id: output.id })}
+                >
+                  <RefreshCw aria-hidden="true" />
+                  Replace link
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() =>
+                    pushAlert('deleteCalendar', { ownerId, id: output.id, name: output.name })
+                  }
+                >
+                  <Trash2 aria-hidden="true" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </div>
-        <button type="button" onClick={onEdit}>
-          Edit
-        </button>
-      </div>
-      <div className="source-tags">
-        {output.sources.map((membership) => (
-          <span key={membership.sourceId}>
-            {membership.prefix && `${membership.prefix} `}
-            {sources.find((source) => source.id === membership.sourceId)?.name}
-          </span>
-        ))}
-      </div>
-      <CopyLink url={`${baseURL}/feed/${output.token}.ics`} />
-      <p className="hint">
-        Anyone with this link can subscribe. Add it to your calendar app using “Subscribe from URL”.
-      </p>
-      <div className="card-footer">
-        <button
-          type="button"
-          className="text-button"
-          aria-expanded={preview}
-          onClick={() => setPreview(!preview)}
-        >
-          {preview ? 'Hide preview ↑' : 'Preview events ↓'}
-        </button>
-        <div className="actions">
-          <button
-            type="button"
-            className="text-button"
-            disabled={rotateOutputMutation.isPending}
-            onClick={() => {
-              if (
-                window.confirm(
-                  'Create a new subscription link? The old link will stop working for every subscriber. You will need to send them the new link.',
-                )
-              ) {
-                rotateOutputMutation.mutate({ data: { id: output.id } })
-              }
-            }}
+          <div className="flex flex-wrap gap-1.5">
+            {output.sources.map((membership) => (
+              <SourceBadge sourceId={membership.sourceId} key={membership.sourceId}>
+                {membership.prefix && `${membership.prefix} `}
+                {sources.find((source) => source.id === membership.sourceId)?.name}
+              </SourceBadge>
+            ))}
+            {!output.sources.length && (
+              <span className="text-xs text-muted-foreground">No sources selected</span>
+            )}
+          </div>
+          <div className="mt-auto">
+            <CopyLink url={`${baseURL}/feed/${output.token}.ics`} />
+          </div>
+        </CardContent>
+        <CardFooter className="justify-between gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => pushModal('calendarPreview', { ownerId, output })}
           >
-            Replace link
-          </button>
-          <button
-            type="button"
-            className="text-button danger"
-            disabled={removeOutputMutation.isPending}
-            onClick={() => {
-              if (
-                window.confirm(`Delete ${output.name}? Its subscription link will stop working.`)
-              ) {
-                removeOutputMutation.mutate({ data: { id: output.id } })
-              }
-            }}
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-      <ErrorMessage error={rotateOutputMutation.error ?? removeOutputMutation.error} />
-      {preview && <Preview ownerId={ownerId} output={output} />}
+            <Eye aria-hidden="true" />
+            Preview events
+          </Button>
+          <span className="text-xs text-muted-foreground">Read-only link</span>
+        </CardFooter>
+      </Card>
     </article>
   )
 }
 
+function SourceStatus({ source }: { source: Source }) {
+  if (!source.enabled) return <StatusBadge>Disabled</StatusBadge>
+  if (source.lastError)
+    return (
+      <StatusBadge tone={source.lastSuccessAt ? 'warning' : 'danger'}>
+        {source.lastSuccessAt ? 'Using older data' : 'Unavailable'}
+      </StatusBadge>
+    )
+  if (source.lastSuccessAt) return <StatusBadge tone="success">Healthy</StatusBadge>
+  return <StatusBadge>Not checked</StatusBadge>
+}
+
 export function CalendarDashboard({ ownerId, baseURL }: { ownerId: string; baseURL: string }) {
   const calendarsQuery = useQuery(queryOptions.calendars.list(ownerId))
-  const [sourceEditor, setSourceEditor] = useState<Source | 'new' | null>(null)
-  const [outputEditor, setOutputEditor] = useState<Output | 'new' | null>(null)
   const checkSourceMutation = useMutation(mutationOptions.sources.check(ownerId))
-  const removeSourceMutation = useMutation(mutationOptions.sources.remove(ownerId))
-
-  if (calendarsQuery.isPending) {
-    return <p className="empty">Loading your calendars...</p>
-  }
-
-  if (!calendarsQuery.data) {
+  if (calendarsQuery.isPending)
+    return <p className="py-8 text-sm text-muted-foreground">Loading your calendars...</p>
+  if (!calendarsQuery.data)
     return (
-      <section className="panel">
+      <section className="space-y-3">
         <ErrorMessage error={calendarsQuery.error} />
-        <button type="button" onClick={() => calendarsQuery.refetch()}>
+        <Button variant="outline" onClick={() => calendarsQuery.refetch()}>
           Try again
-        </button>
+        </Button>
       </section>
     )
-  }
-
   const { sources, outputs } = calendarsQuery.data
-
   return (
     <>
-      <section className="outputs-section">
-        <div className="section-header">
-          <div>
-            <h2>
-              Your calendars <span className="count">{outputs.length}</span>
-            </h2>
-            <p>Bring a few calendars together. Share one simple link.</p>
-          </div>
-          <button type="button" className="primary" onClick={() => setOutputEditor('new')}>
-            + Create calendar
-          </button>
-        </div>
+      <section aria-label="Your calendars" className="min-w-0">
+        <SectionHeader
+          title="Your calendars"
+          count={outputs.length}
+          description="Bring your sources together. Share one simple link."
+          action={
+            <Button onClick={() => pushModal('calendar', { ownerId, sources })}>
+              <Plus aria-hidden="true" />
+              Create calendar
+            </Button>
+          }
+        />
         {!outputs.length && (
-          <div className="empty-card">
-            <span aria-hidden="true">☀</span>
-            <h3>A clearer view of your week</h3>
-            <p>Add your sources below, then combine them into a calendar you can share.</p>
-            <button type="button" onClick={() => setOutputEditor('new')}>
+          <Card className="items-center gap-3 py-8 text-center">
+            <CalendarDays aria-hidden="true" className="size-8 text-primary" />
+            <h3 className="font-heading text-lg font-bold">A clearer view of your week</h3>
+            <p className="max-w-sm px-4 text-sm text-muted-foreground">
+              Add your sources below, then combine them into a calendar you can share.
+            </p>
+            <Button variant="outline" onClick={() => pushModal('calendar', { ownerId, sources })}>
               Create your first calendar
-            </button>
-          </div>
+            </Button>
+          </Card>
         )}
-        <div className="calendar-grid">
+        <div className="calendar-grid" data-testid="calendar-grid">
           {outputs.map((output) => (
             <OutputCard
               key={output.id}
@@ -494,109 +235,137 @@ export function CalendarDashboard({ ownerId, baseURL }: { ownerId: string; baseU
               baseURL={baseURL}
               output={output}
               sources={sources}
-              onEdit={() => setOutputEditor(output)}
             />
           ))}
         </div>
-      </section>
-      <section className="panel sources-section">
-        <div className="section-header">
-          <div>
-            <h2>
-              Sources <span className="count">{sources.length}</span>
-            </h2>
-            <p>Your original calendar subscriptions, kept in one place.</p>
-          </div>
-          <button type="button" onClick={() => setSourceEditor('new')}>
-            + Add source
-          </button>
-        </div>
-        <p className="hint">
-          Status reflects the last check. Sources refresh on demand, at most every 15 minutes.
-          Calendar apps choose their own refresh times.
-        </p>
-        {!sources.length && (
-          <p className="empty">
-            No sources yet. Grab an iCalendar subscription URL from a calendar you use.
+        {!!outputs.length && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Anyone with a calendar link can subscribe in their calendar app using “Subscribe from
+            URL”.
           </p>
         )}
-        {sources.map((source) => (
-          <article className="source-row" key={source.id}>
-            <div className="source-detail">
-              <div className="source-name">
-                <strong>{source.name}</strong>
-                <span
-                  className={`badge ${!source.enabled ? 'muted' : source.lastError ? 'warning' : source.lastSuccessAt ? 'good' : 'muted'}`}
-                >
-                  {!source.enabled
-                    ? 'Disabled'
-                    : source.lastError
-                      ? source.lastSuccessAt
-                        ? 'Using older data'
-                        : 'Unavailable'
-                      : source.lastSuccessAt
-                        ? 'Healthy'
-                        : 'Not checked'}
-                </span>
-              </div>
-              <p className="source-address">{source.url}</p>
-              <p className="hint">
-                Last attempt: {time(source.lastAttemptAt)}
-                <br />
-                Last success: {time(source.lastSuccessAt)}
-              </p>
-              {source.lastError && <p className="notice">{source.lastError}</p>}
-            </div>
-            <div className="actions">
-              <button
-                type="button"
-                disabled={!source.enabled || checkSourceMutation.isPending}
-                onClick={() => checkSourceMutation.mutate({ data: { id: source.id } })}
-              >
-                {checkSourceMutation.isPending &&
-                checkSourceMutation.variables?.data.id === source.id
-                  ? 'Checking...'
-                  : 'Check'}
-              </button>
-              <button type="button" onClick={() => setSourceEditor(source)}>
-                Edit
-              </button>
-              <button
-                type="button"
-                className="text-button danger"
-                disabled={removeSourceMutation.isPending}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Remove ${source.name}? It will be removed from every calendar that includes it.`,
-                    )
-                  ) {
-                    removeSourceMutation.mutate({ data: { id: source.id } })
-                  }
-                }}
-              >
-                Remove
-              </button>
-            </div>
-          </article>
-        ))}
-        <ErrorMessage error={checkSourceMutation.error ?? removeSourceMutation.error} />
       </section>
-      {sourceEditor && (
-        <SourceForm
-          ownerId={ownerId}
-          source={sourceEditor === 'new' ? undefined : sourceEditor}
-          onClose={() => setSourceEditor(null)}
+      <section aria-label="Sources" className="min-w-0">
+        <SectionHeader
+          title="Sources"
+          count={sources.length}
+          description="Your original calendar subscriptions, kept in one place."
+          action={
+            <Button onClick={() => pushModal('source', { ownerId })}>
+              <Plus aria-hidden="true" />
+              Add source
+            </Button>
+          }
         />
-      )}
-      {outputEditor && (
-        <OutputForm
-          ownerId={ownerId}
-          output={outputEditor === 'new' ? undefined : outputEditor}
-          sources={sources}
-          onClose={() => setOutputEditor(null)}
-        />
-      )}
+        <Card className="gap-0 overflow-hidden py-0">
+          <Table aria-label="Sources">
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="pl-4">Name</TableHead>
+                <TableHead>URL</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Last attempt</TableHead>
+                <TableHead>Last success</TableHead>
+                <TableHead className="pr-4 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {!sources.length && (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="whitespace-normal px-4 py-8 text-center text-muted-foreground"
+                  >
+                    No sources yet. Add an iCalendar subscription URL to get started.
+                  </TableCell>
+                </TableRow>
+              )}
+              {sources.map((source) => (
+                <TableRow key={source.id}>
+                  <TableCell className="min-w-36 max-w-56 whitespace-normal py-3 pl-4 font-semibold break-words">
+                    <span className="flex items-center gap-2">
+                      <SourceMarker sourceId={source.id} />
+                      {source.name}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <a
+                      href={source.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={source.url}
+                      className="block max-w-52 truncate text-xs text-muted-foreground hover:text-primary"
+                    >
+                      {source.url}
+                    </a>
+                    {source.lastError && (
+                      <p className="mt-1 max-w-52 whitespace-normal break-words text-xs text-destructive">
+                        {source.lastError}
+                      </p>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <SourceStatus source={source} />
+                  </TableCell>
+                  <TableCell className="text-xs tabular-nums text-muted-foreground">
+                    {time(source.lastAttemptAt)}
+                  </TableCell>
+                  <TableCell className="text-xs tabular-nums text-muted-foreground">
+                    {time(source.lastSuccessAt)}
+                  </TableCell>
+                  <TableCell className="pr-4 text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Actions for source ${source.name}`}
+                          />
+                        }
+                      >
+                        <Ellipsis aria-hidden="true" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-40">
+                        <DropdownMenuItem
+                          disabled={!source.enabled || checkSourceMutation.isPending}
+                          onClick={() => checkSourceMutation.mutate({ data: { id: source.id } })}
+                        >
+                          <RefreshCw aria-hidden="true" />
+                          Check
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => pushModal('source', { ownerId, source })}>
+                          <Pencil aria-hidden="true" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() =>
+                            pushAlert('deleteSource', { ownerId, id: source.id, name: source.name })
+                          }
+                        >
+                          <Trash2 aria-hidden="true" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    {checkSourceMutation.isPending &&
+                      checkSourceMutation.variables?.data.id === source.id && (
+                        <output className="sr-only">Checking {source.name}...</output>
+                      )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <p className="border-t px-4 py-3 text-xs text-muted-foreground">
+            Status shows the last check. Sources refresh on demand, at most every 15 minutes.
+            Calendar apps choose their own refresh times.
+          </p>
+        </Card>
+        <ErrorMessage error={checkSourceMutation.error} />
+      </section>
     </>
   )
 }
