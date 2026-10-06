@@ -11,7 +11,7 @@ After provisioning, create a Railway-generated HTTPS domain for `web`. Set varia
 | Variable | Value |
 | --- | --- |
 | `DATABASE_URL` | Reference to the private PostgreSQL service, declared in IaC |
-| `APP_URL` | `https://${{RAILWAY_PUBLIC_DOMAIN}}`, declared in IaC; requires a generated domain |
+| `APP_URL` | `https://cal-pal.app`, declared in IaC and configured on production |
 | `BETTER_AUTH_SECRET` | A newly generated random secret, at least 32 characters |
 | `OPERATOR_GOOGLE_EMAIL` | Christian's verified Google sign-in email |
 | `GOOGLE_CLIENT_ID` | Google OAuth web client ID |
@@ -24,7 +24,26 @@ Preserve remotely configured variables when reviewing future plans. Never place 
 
 ## Google OAuth web client
 
-Calendar Club's dedicated Google Cloud project is `calendar-club-510811`, with the **Calendar Club web** OAuth client. Its client ID and secret are stored in Railway's web-service variables. The configured callbacks cover localhost, the local Tailscale HTTPS origin and the production Railway origin. The operator identity is `christian.alares@gmail.com`. Keep the existing credentials when changing deployment settings.
+CalPal's dedicated Google Cloud project is `calendar-club-510811`, with the **CalPal web** OAuth client. Its client ID and secret are stored in Railway's web-service variables. The configured callbacks cover localhost, the local Tailscale HTTPS origin, the production Railway origin, and `cal-pal.app`. The operator identity is `christian.alares@gmail.com`. Keep the existing credentials when changing deployment settings.
+
+### Production custom domain
+
+`https://cal-pal.app` is the canonical application origin. It is attached to Railway's
+production `web` service. Cloudflare hosts its DNS with these records:
+
+| Type | Name | Value | Proxy |
+| --- | --- | --- | --- |
+| CNAME | `@` | `h4hbcm15.up.railway.app` | DNS only |
+| TXT | `_railway-verify` | Railway's domain-ownership verification value | DNS only |
+
+The apex CNAME is flattened by Cloudflare. Railway terminates HTTPS and manages the
+domain certificate; calendar clients connect directly without Cloudflare browser
+challenges or proxy caching. Keep the ownership TXT record for certificate management.
+The original Railway hostname remains attached so existing feed URLs keep routing.
+New calendar and invitation links use `APP_URL=https://cal-pal.app`.
+
+The Google consent-screen app name is **CalPal**, its homepage is `https://cal-pal.app`,
+and `cal-pal.app` is included in Authorized domains. No credentials were replaced.
 
 Create or select a Google Cloud project, configure its Google Auth Platform branding/audience, and create an OAuth client of type **Web application**. External audience is appropriate for friends with ordinary Google accounts. The app requests basic identity scopes only: `openid`, `email`, `profile`. It fetches calendar subscriptions separately and does not request Google Calendar API access.
 
@@ -32,7 +51,8 @@ Register these exact authorized redirect URIs:
 
 - `http://localhost:3000/api/auth/callback/google`
 - `https://krilles-privat.tailce50d4.ts.net:3000/api/auth/callback/google`
-- The deployed HTTPS origin followed by `/api/auth/callback/google`
+- `https://web-production-951a1.up.railway.app/api/auth/callback/google`
+- `https://cal-pal.app/api/auth/callback/google`
 
 For local Tailscale access, start with `CALENDAR_APP_URL=https://krilles-privat.tailce50d4.ts.net:3000 pnpm dev --environment production` and use that address in the browser. The launcher permits only this origin and the normal localhost origin. The selected origin keeps OAuth state cookies and callback destinations on the same host; production continues to use Railway's configured HTTPS origin.
 

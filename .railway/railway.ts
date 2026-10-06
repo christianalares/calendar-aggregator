@@ -13,7 +13,7 @@ export default defineRailway((context) => {
     healthcheck: '/api/health',
     env: {
       DATABASE_URL: db.env.DATABASE_URL,
-      APP_URL: 'https://${{RAILWAY_PUBLIC_DOMAIN}}',
+      APP_URL: 'https://cal-pal.app',
       NODE_ENV: 'production',
       BETTER_AUTH_SECRET: preserve(),
       OPERATOR_GOOGLE_EMAIL: preserve(),

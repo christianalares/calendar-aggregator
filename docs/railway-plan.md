@@ -23,3 +23,8 @@ The approved saved artifact created both services and the PostgreSQL data volume
 The maintained declaration now uses `preserve()` for the auth secret, operator identity and Google credential pair. PostgreSQL uses its template's default private endpoint, which the local launcher verified as `postgres.railway.internal`. The follow-up plan confirmed the configuration is up to date, with no pending resource changes. The original creation artifact records the approved historical change and must not be reapplied.
 
 Live health, Google sign-in, real sources and a calendar-client subscription are tracked in [verification](verification.md).
+
+The user subsequently requested the production custom domain `cal-pal.app`.
+It is attached to `web`, with a DNS-only apex CNAME and Railway ownership TXT record
+in Cloudflare. `APP_URL` is now `https://cal-pal.app` in both the live variables and
+the maintained declaration. The generated Railway hostname and credentials remain.
