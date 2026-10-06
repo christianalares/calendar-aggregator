@@ -28,7 +28,7 @@ Create or select a Google Cloud project, configure its Google Auth Platform bran
 
 Register these exact authorized redirect URIs:
 
-- `http://localhost:3000/api/auth/callback/google`
+- `http://localhost:4310/api/auth/callback/google`
 - The deployed HTTPS origin followed by `/api/auth/callback/google`
 
 The production origin can be filled in after the Railway domain exists. Copy the client ID/secret into Railway's protected web-service variables. Do not paste the secret into a chat or source file. Set `OPERATOR_GOOGLE_EMAIL`, restart/redeploy the service, regenerate the environment schema, and complete a real sign-in before sharing invitations.

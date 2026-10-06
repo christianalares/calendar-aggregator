@@ -55,7 +55,7 @@ describe('Railway startup configuration', () => {
         BETTER_AUTH_SECRET: 'wrong-local-secret',
       },
     )
-    expect(env.APP_URL).toBe('http://localhost:3000')
+    expect(env.APP_URL).toBe('http://localhost:4310')
     expect(env.BETTER_AUTH_SECRET).toBe('remote-secret')
     expect(env.RAILWAY_TOKEN).toBeUndefined()
   })

@@ -15,7 +15,7 @@ railway login
 pnpm dev --environment production
 ```
 
-Startup reads service variables using the Railway CLI, verifies project/environment/service metadata, generates `apps/web/src/env.generated.ts` from variable **names only**, and opens an authenticated SSH tunnel to the private PostgreSQL service. Values remain in memory and pass to the child process. No dotenv files are written or loaded. T3 Env validates the app's server configuration.
+The local app runs at `http://localhost:4310`, leaving Vitalplus's ports available. Startup reads service variables using the Railway CLI, verifies project/environment/service metadata, generates `apps/web/src/env.generated.ts` from variable **names only**, and opens an authenticated SSH tunnel to the private PostgreSQL service. Values remain in memory and pass to the child process. No dotenv files are written or loaded. T3 Env validates the app's server configuration.
 
 Register your SSH public key with Railway and trust its SSH host through the normal interactive SSH setup first. `CALENDAR_SSH_IDENTITY` can select a specific private-key file. The launcher checks the selected database's URL, SSH target and database identity before starting the app. It stops its tunnel when the app stops.
 
