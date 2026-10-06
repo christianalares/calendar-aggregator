@@ -5,6 +5,8 @@ export const envSchema = z.object({
   "APP_URL": z.string(),
   "BETTER_AUTH_SECRET": z.string(),
   "DATABASE_URL": z.string(),
+  "GOOGLE_CLIENT_ID": z.string(),
+  "GOOGLE_CLIENT_SECRET": z.string(),
   "NODE_ENV": z.string(),
   "OPERATOR_GOOGLE_EMAIL": z.string(),
   "RAILWAY_ENVIRONMENT": z.string().optional(),

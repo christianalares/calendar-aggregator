@@ -54,7 +54,7 @@ Each command creates an isolated loopback-only PostgreSQL cluster and database, 
 
 ## First deployment and Google setup
 
-See [operations](docs/operations.md) and [the applied Railway plan](docs/railway-plan.md). The private database, web service, auth secret, HTTPS domain and operator email are configured. Local startup against Railway is verified. Configure the Google OAuth web client before enabling sign-in; live Google/provider verification remains pending. Deployment evidence is recorded in [verification](docs/verification.md).
+See [operations](docs/operations.md) and [the applied Railway plan](docs/railway-plan.md). The private database, web service, auth secret, HTTPS domain, operator identity and Google OAuth client are configured. Real Google operator sign-in through both the local Tailscale origin and production is verified. Deployment and acceptance evidence is recorded in [verification](docs/verification.md).
 
 ## Using it
 

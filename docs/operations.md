@@ -24,6 +24,8 @@ Preserve remotely configured variables when reviewing future plans. Never place 
 
 ## Google OAuth web client
 
+Calendar Club's dedicated Google Cloud project is `calendar-club-510811`, with the **Calendar Club web** OAuth client. Its client ID and secret are stored in Railway's web-service variables. The configured callbacks cover localhost, the local Tailscale HTTPS origin and the production Railway origin. The operator identity is `christian.alares@gmail.com`. Keep the existing credentials when changing deployment settings.
+
 Create or select a Google Cloud project, configure its Google Auth Platform branding/audience, and create an OAuth client of type **Web application**. External audience is appropriate for friends with ordinary Google accounts. The app requests basic identity scopes only: `openid`, `email`, `profile`. It fetches calendar subscriptions separately and does not request Google Calendar API access.
 
 Register these exact authorized redirect URIs:

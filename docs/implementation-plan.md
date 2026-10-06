@@ -1,6 +1,6 @@
 # Proposed implementation slices
 
-Status: approved for implementation, 2026-10-06. These are bounded work items for [build-spec.md](build-spec.md), not published tracker issues. Slices 1 through 3 are implemented and locally verified. Slice 4 is in progress: the approved Railway plan is applied, deployment and HTTPS health are verified, and real Railway-backed local startup is verified; Google, provider and calendar-client acceptance remain pending. No project-specific tracker is configured; do not create a new board or publish issues without agreement.
+Status: approved for implementation, 2026-10-06. These are bounded work items for [build-spec.md](build-spec.md), not published tracker issues. Slices 1 through 3 are implemented and locally verified. Slice 4 is in progress: the approved Railway plan is applied, deployment and HTTPS health are verified, real Railway-backed local startup is verified, and Google operator sign-in succeeds through Tailscale and production. Admission with a second real invited account, real providers and a calendar-client subscription remain pending. No project-specific tracker is configured; do not create a new board or publish issues without agreement.
 
 Implement sequentially. Each slice has a concrete acceptance gate. Approval of this plan includes the test seams below; materially changing them requires another scope decision.
 
