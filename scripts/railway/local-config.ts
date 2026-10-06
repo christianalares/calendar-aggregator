@@ -54,8 +54,8 @@ export function localEnvironment(
   return {
     ...env,
     ...values,
-    APP_URL: 'http://localhost:4310',
+    APP_URL: 'http://localhost:3000',
     NODE_ENV: 'development',
-    PORT: '4310',
+    PORT: '3000',
   }
 }

@@ -19,7 +19,7 @@ Local verification on 2026-10-06:
 | Railway plan | Approved saved plan applied: private PostgreSQL, persistent volume and GitHub-backed web service created. See [plan](railway-plan.md). |
 | Live Railway startup | Deployment `f063bf55-524f-4fbf-8568-599fa436ca07` of commit `4cf0f66` reached SUCCESS; pre-deploy logs confirmed migrations completed. Generated HTTPS `/api/health` independently returned 200 with `status: ok`. Anonymous `/` redirected to `/login`, and the login page returned 200 with the Google setup notice. Auth secret, public domain and operator email configured remotely. |
 | Live Google OAuth | Pending client credentials; operator identity configured. Fixture callback success is not live acceptance. |
-| Railway-backed local startup | `pnpm dev --environment production` loaded real web-service variables, authenticated through the private PostgreSQL SSH tunnel and started Vite on port 4310. Local `/api/health` returned 200 with `status: ok`; anonymous `/` redirected to `/login`. |
+| Railway-backed local startup | `pnpm dev --environment production` loaded real web-service variables, authenticated through the private PostgreSQL SSH tunnel and started Vite on port 3000. Local `/api/health` returned 200 with `status: ok`; anonymous `/` redirected to `/login`. The port was changed from 4310 to reuse the user's existing Tailscale configuration. |
 | Real source providers | Pending supplied private subscription URLs. |
 | Native calendar client | Pending an available client and a live subscription URL. Mobile browser emulation is not a native calendar-client check. |
 
