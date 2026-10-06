@@ -16,10 +16,10 @@ Local verification on 2026-10-06:
 | Cache/recovery | Bounded concurrency, shared-source cache reuse, persisted stale-data recovery, empty-snapshot replacement, partial/total failure and in-flight edit protection tested. |
 | Secret boundaries | Metadata redaction, names-only environment generation and safe configuration/operation errors tested. Static client artifacts checked for server/database imports and known fixture secrets. |
 | GitHub | Published initial build `7099ad7a52a34c5de72cab06420d1260e73055a0`; fetched `origin/main` matched local HEAD. Subsequent documentation updates are verified again before handoff. |
-| Railway plan | Two additions, zero changes/deletions, saved and not applied. See [plan](railway-plan.md). |
-| Live Railway startup | Pending infrastructure approval and initial remote configuration. |
-| Live Google OAuth | Pending client credentials and operator email; fixture callback success is not live acceptance. |
-| Railway-backed local startup | Names/target/tunnel logic is implemented and policy-tested; a real variable load and SSH connection await provisioned services. |
+| Railway plan | Approved saved plan applied: private PostgreSQL, persistent volume and GitHub-backed web service created. See [plan](railway-plan.md). |
+| Live Railway startup | Deployment `f063bf55-524f-4fbf-8568-599fa436ca07` of commit `4cf0f66` reached SUCCESS; pre-deploy logs confirmed migrations completed. Generated HTTPS `/api/health` independently returned 200 with `status: ok`. Anonymous `/` redirected to `/login`, and the login page returned 200 with the Google setup notice. Auth secret, public domain and operator email configured remotely. |
+| Live Google OAuth | Pending client credentials; operator identity configured. Fixture callback success is not live acceptance. |
+| Railway-backed local startup | `pnpm dev --environment production` loaded real web-service variables, authenticated through the private PostgreSQL SSH tunnel and started Vite on port 4310. Local `/api/health` returned 200 with `status: ok`; anonymous `/` redirected to `/login`. |
 | Real source providers | Pending supplied private subscription URLs. |
 | Native calendar client | Pending an available client and a live subscription URL. Mobile browser emulation is not a native calendar-client check. |
 

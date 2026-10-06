@@ -30,7 +30,7 @@ pnpm lint
 
 Only run migrations after reviewing the generated SQL and selecting the intended database. Railway deployment runs `pnpm --filter @calendar-aggregator/db migrate` using its injected server environment, without the local SSH launcher.
 
-The committed generated schema starts with the required app contract. Regenerate it from the actual Railway service after provisioning/configuration. Server configuration is defined in `apps/web/src/env.server.ts`; the database package receives its validated connection URL.
+The committed generated schema contains variable names from the configured Railway service. Regenerate it after configuration changes. Server configuration is defined in `apps/web/src/env.server.ts`; the database package receives its validated connection URL.
 
 ## Tests
 
@@ -46,7 +46,7 @@ Each command creates an isolated loopback-only PostgreSQL cluster and database, 
 
 ## First deployment and Google setup
 
-See [operations](docs/operations.md) and [the proposed Railway plan](docs/railway-plan.md). Infrastructure application and live Google/provider verification are still pending. Provision the resources, generate a private Better Auth secret remotely, assign the web service a Railway HTTPS domain, and configure the Google OAuth web client before enabling sign-in.
+See [operations](docs/operations.md) and [the applied Railway plan](docs/railway-plan.md). The private database, web service, auth secret, HTTPS domain and operator email are configured. Local startup against Railway is verified. Configure the Google OAuth web client before enabling sign-in; live Google/provider verification remains pending. Deployment evidence is recorded in [verification](docs/verification.md).
 
 ## Using it
 

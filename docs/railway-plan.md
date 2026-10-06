@@ -1,6 +1,6 @@
 # Railway provisioning plan
 
-Status: prepared for approval, not applied. Generated 2026-10-06 with Railway CLI 5.62.1.
+Status: approved and applied on 2026-10-06 with Railway CLI 5.62.1. The CLI confirmed `Applied pinned Railway configuration.`
 
 Target: the existing `calendar-aggregator` project, `production`. Read-back found no services, volumes, buckets, shared variables or staged changes.
 
@@ -18,4 +18,8 @@ The saved artifact is `.railway-plans/production.json`, ignored by Git. Its chan
 
 Applying the plan provisions the resources and triggers deployment. Initial application startup requires a generated HTTPS domain and a private `BETTER_AUTH_SECRET` configured remotely. Google credentials and the operator email enable sign-in afterward. Domain creation, remote initial secret configuration and redeployment complete that setup; no existing credentials are rotated.
 
-Exact saved-plan application remains the separately agreed approval checkpoint. Live health, Google sign-in, real sources and a calendar-client subscription remain unverified until provisioned/configured and exercised.
+The approved saved artifact created both services and the PostgreSQL data volume. The database is running privately with no public TCP proxy. The web service has a generated HTTPS domain and a remotely generated auth secret. The operator email is configured; Google credentials are still pending.
+
+The maintained declaration now uses `preserve()` for the auth secret, operator identity and Google credential pair. PostgreSQL uses its template's default private endpoint, which the local launcher verified as `postgres.railway.internal`. The follow-up plan confirmed the configuration is up to date, with no pending resource changes. The original creation artifact records the approved historical change and must not be reapplied.
+
+Live health, Google sign-in, real sources and a calendar-client subscription are tracked in [verification](verification.md).

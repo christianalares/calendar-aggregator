@@ -1,11 +1,10 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: Railway resolves references remotely.
-import { defineRailway, github, postgres, project, service } from 'railway/iac'
+import { defineRailway, github, postgres, preserve, project, service } from 'railway/iac'
 import { requireProductionTarget } from './targets.ts'
 
 export default defineRailway((context) => {
   requireProductionTarget(context.projectId, context.environmentId)
   const db = postgres('postgres')
-  db.networking = { privateNetworkEndpoint: 'postgres' }
   const web = service('web', {
     source: github('christianalares/calendar-aggregator', { branch: 'main' }),
     build: 'pnpm build',
@@ -16,6 +15,10 @@ export default defineRailway((context) => {
       DATABASE_URL: db.env.DATABASE_URL,
       APP_URL: 'https://${{RAILWAY_PUBLIC_DOMAIN}}',
       NODE_ENV: 'production',
+      BETTER_AUTH_SECRET: preserve(),
+      OPERATOR_GOOGLE_EMAIL: preserve(),
+      GOOGLE_CLIENT_ID: preserve(),
+      GOOGLE_CLIENT_SECRET: preserve(),
     },
   })
 
