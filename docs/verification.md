@@ -15,7 +15,7 @@ Local verification on 2026-10-06:
 | Fetch policy | Production policy tested for IPv4/IPv6 private/reserved addresses, mixed DNS answers, redirect escapes/limits, bounded DNS/body stalls, body limit, status errors and actual pinned HTTP transport. |
 | Cache/recovery | Bounded concurrency, shared-source cache reuse, persisted stale-data recovery, empty-snapshot replacement, partial/total failure and in-flight edit protection tested. |
 | Secret boundaries | Metadata redaction, names-only environment generation and safe configuration/operation errors tested. Static client artifacts checked for server/database imports and known fixture secrets. |
-| GitHub | Initial publication and fetched-reference verification recorded below after publication. |
+| GitHub | Published initial build `7099ad7a52a34c5de72cab06420d1260e73055a0`; fetched `origin/main` matched local HEAD. Subsequent documentation updates are verified again before handoff. |
 | Railway plan | Two additions, zero changes/deletions, saved and not applied. See [plan](railway-plan.md). |
 | Live Railway startup | Pending infrastructure approval and initial remote configuration. |
 | Live Google OAuth | Pending client credentials and operator email; fixture callback success is not live acceptance. |
