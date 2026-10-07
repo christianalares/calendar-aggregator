@@ -155,7 +155,7 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
   await page.getByRole('button', { name: 'Create calendar', exact: true }).click()
   await page.getByLabel('Calendar name').fill('Our week')
   await page.getByRole('checkbox', { name: 'Football', exact: true }).check()
-  await page.getByLabel('Prefix for Football').fill('⚽')
+  await page.getByLabel('Text before title for Football').fill('⚽ ')
   await page.getByRole('button', { name: 'Save calendar', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Our week', exact: true })).toBeVisible()

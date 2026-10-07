@@ -7,6 +7,7 @@ import { cachePolicy, createFeedService } from '../apps/web/src/server/feeds'
 import { previewCalendar } from '../apps/web/src/server/ical'
 import { FetchError } from '../apps/web/src/server/upstream'
 import { authUsers, connectDatabase, members, sources } from '../packages/db/src/index'
+import { type TitleRule, titleFormattingFromPrefix } from '../packages/db/src/title-formatting'
 
 const databaseURL = process.env.TEST_DATABASE_URL!
 if (
@@ -48,6 +49,40 @@ async function setup(count = 1) {
 }
 
 describe('owner-scoped configuration', () => {
+  it('persists per-output formatting and uses the same transformation in the feed and preview', async () => {
+    const a = await setup()
+    const rule: TitleRule = {
+      id: 'rename',
+      name: 'Matchday',
+      enabled: true,
+      caseSensitive: false,
+      match: [{ kind: 'text', value: 'Fotboll' }],
+      show: [{ kind: 'text', value: 'Matchdag' }],
+    }
+    const settings = { ...titleFormattingFromPrefix('⚽'), rules: [rule] }
+    await store.saveOutput(a.owner, {
+      id: a.output.id,
+      name: 'Our week',
+      sources: [{ sourceId: a.selected[0]!.sourceId, titleFormatting: settings }],
+    })
+    const other = await store.saveOutput(a.owner, { name: 'Other', sources: a.selected })
+    const feed = createFeedService(db, async () => fixture)
+    expect(
+      (await store.list(a.owner)).outputs.find((output) => output.id === a.output.id)?.sources[0]
+        ?.titleFormatting,
+    ).toEqual(settings)
+    expect(previewCalendar((await feed.forToken(a.output.token)).text)[0]?.title).toBe(
+      '⚽ Matchdag',
+    )
+    expect((await feed.preview(a.owner, a.output.id)).events[0]?.title).toBe('⚽ Matchdag')
+    expect(
+      previewCalendar(
+        (await feed.forToken((await store.requireOutput(a.owner, other.id)).token)).text,
+      )[0]?.title,
+    ).toBe('⚽ Fotboll')
+    expect((await store.list(a.owner)).sources[0]?.sampleTitles).toContain('Fotboll')
+    expect((await store.requireOutput(a.owner, a.output.id)).token).toBe(a.output.token)
+  })
   it('keeps accounts isolated even when a caller knows another owner’s IDs', async () => {
     const a = await setup()
     const b = await owner()

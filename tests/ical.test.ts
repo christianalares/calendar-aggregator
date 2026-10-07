@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import ICAL from 'ical.js'
 import { describe, expect, it } from 'vitest'
 import { mergeCalendars, parseCalendar, previewCalendar } from '../apps/web/src/server/ical'
+import { type TitleRule, titleFormattingFromPrefix } from '../packages/db/src/title-formatting'
 
 const fixture = readFileSync(new URL('./fixtures/complex.ics', import.meta.url), 'utf8')
 const input = (id = 'source-a', snapshot = fixture, prefix = '⚽') => ({
@@ -12,6 +13,30 @@ const input = (id = 'source-a', snapshot = fixture, prefix = '⚽') => ({
 })
 
 describe('iCalendar preservation and source identity', () => {
+  it('renames recurring entries and exceptions without changing identities or cached source text', () => {
+    const rule: TitleRule = {
+      id: 'football',
+      name: 'Football',
+      enabled: true,
+      caseSensitive: false,
+      match: [{ kind: 'text', value: 'Fotboll' }],
+      show: [{ kind: 'text', value: 'Matchdag' }],
+    }
+    const original = input()
+    const previous = previewCalendar(mergeCalendars('Before', [original]))
+    const formatted = {
+      ...original,
+      titleFormatting: { ...titleFormattingFromPrefix('⚽'), after: '!', rules: [rule] },
+    }
+    const events = previewCalendar(mergeCalendars('After', [formatted]))
+    expect(events.map((event) => event.uid)).toEqual(previous.map((event) => event.uid))
+    expect(events[0]?.title).toBe('⚽ Matchdag!')
+    expect(events.map(({ title: _title, ...metadata }) => metadata)).toEqual(
+      previous.map(({ title: _title, ...metadata }) => metadata),
+    )
+    expect(events.find((event) => event.exception)?.title).toBe('⚽ Later football!')
+    expect(original.snapshot).toBe(fixture)
+  })
   it('retains recurrence, moved exceptions, all-day spans, time zones, cancellation and rich properties', () => {
     const output = parseCalendar(mergeCalendars('Our week', [input()]))
     const events = output.getAllSubcomponents('vevent')

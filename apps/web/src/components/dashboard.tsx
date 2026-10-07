@@ -9,6 +9,7 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  Type,
 } from 'lucide-react'
 import { useState } from 'react'
 import { pushAlert } from '@/components/alerts'
@@ -146,7 +147,8 @@ function OutputCard({
           <div className="flex flex-wrap gap-1.5">
             {output.sources.map((membership) => (
               <SourceBadge sourceId={membership.sourceId} key={membership.sourceId}>
-                {membership.prefix && `${membership.prefix} `}
+                {membership.titleFormatting?.before ??
+                  (membership.prefix && `${membership.prefix} `)}
                 {sources.find((source) => source.id === membership.sourceId)?.name}
               </SourceBadge>
             ))}
@@ -167,7 +169,17 @@ function OutputCard({
             <Eye aria-hidden="true" />
             Preview events
           </Button>
-          <span className="text-xs text-muted-foreground">Read-only link</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!output.sources.length}
+            onClick={() =>
+              pushModal('calendar', { ownerId, sources, output, titleFormattingOnly: true })
+            }
+          >
+            <Type aria-hidden="true" />
+            Title formatting
+          </Button>
         </CardFooter>
       </Card>
     </article>

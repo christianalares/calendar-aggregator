@@ -95,11 +95,15 @@ export function createFeedService(db: Database, fetch = fetchCalendar, now = () 
   async function build(output: NonNullable<Awaited<ReturnType<typeof store.outputForToken>>>) {
     const included = await store.includedSources(output)
     const checked = await Promise.all(
-      included.map(async ({ source, prefix }) => ({ source: await refresh(source), prefix })),
+      included.map(async ({ source, prefix, titleFormatting }) => ({
+        source: await refresh(source),
+        prefix,
+        titleFormatting,
+      })),
     )
-    const available = checked.flatMap(({ source, prefix }) =>
+    const available = checked.flatMap(({ source, prefix, titleFormatting }) =>
       source?.enabled && source.snapshot !== null
-        ? [{ id: source.id, url: source.url, snapshot: source.snapshot, prefix }]
+        ? [{ id: source.id, url: source.url, snapshot: source.snapshot, prefix, titleFormatting }]
         : [],
     )
 

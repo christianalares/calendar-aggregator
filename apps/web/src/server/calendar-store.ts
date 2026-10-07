@@ -6,6 +6,7 @@ import type { z } from 'zod'
 import type { outputInput, sourceInput } from '../lib/calendar-inputs'
 
 import { CalendarError } from '../lib/errors'
+import { previewCalendar } from './ical'
 
 export { CalendarError } from '../lib/errors'
 
@@ -35,6 +36,7 @@ export function createCalendarStore(db: Database) {
             lastAttemptAt: sources.lastAttemptAt,
             lastSuccessAt: sources.lastSuccessAt,
             lastError: sources.lastError,
+            snapshot: sources.snapshot,
           })
           .from(sources)
           .where(eq(sources.ownerId, ownerId))
@@ -58,7 +60,12 @@ export function createCalendarStore(db: Database) {
         : []
 
       return {
-        sources: sourceRows,
+        sources: sourceRows.map(({ snapshot, ...source }) => ({
+          ...source,
+          sampleTitles: snapshot
+            ? [...new Set(previewCalendar(snapshot).map((event) => event.title))].slice(0, 20)
+            : [],
+        })),
         outputs: outputRows.map((output) => ({
           ...output,
           sources: memberships.filter((membership) => membership.outputId === output.id),
@@ -142,7 +149,9 @@ export function createCalendarStore(db: Database) {
         if (input.sources.length) {
           await tx
             .insert(outputSources)
-            .values(input.sources.map((item) => ({ ...item, outputId: id })))
+            .values(
+              input.sources.map((item) => ({ ...item, prefix: item.prefix ?? '', outputId: id })),
+            )
         }
 
         return { id }
@@ -179,7 +188,11 @@ export function createCalendarStore(db: Database) {
     },
     async includedSources(output: typeof outputs.$inferSelect) {
       return await db
-        .select({ source: sources, prefix: outputSources.prefix })
+        .select({
+          source: sources,
+          prefix: outputSources.prefix,
+          titleFormatting: outputSources.titleFormatting,
+        })
         .from(outputSources)
         .innerJoin(sources, eq(outputSources.sourceId, sources.id))
         .where(

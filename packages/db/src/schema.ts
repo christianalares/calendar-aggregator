@@ -1,4 +1,14 @@
-import { boolean, integer, pgEnum, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core'
+import type { TitleFormatting } from './title-formatting'
 
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 const time = (name: string) => timestamp(name, { withTimezone: true })
@@ -116,6 +126,7 @@ export const outputSources = pgTable(
       .notNull()
       .references(() => sources.id, { onDelete: 'cascade' }),
     prefix: text('prefix').notNull().default(''),
+    titleFormatting: jsonb('title_formatting').$type<TitleFormatting>(),
   },
   (table) => [primaryKey({ columns: [table.outputId, table.sourceId] })],
 )

@@ -1,0 +1,1 @@
+ALTER TABLE "output_source" ADD COLUMN "title_formatting" jsonb;

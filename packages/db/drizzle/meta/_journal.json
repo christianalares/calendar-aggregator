@@ -8,6 +8,13 @@
       "when": 1791284776687,
       "tag": "0000_past_corsair",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791401675128,
+      "tag": "0001_hard_blade",
+      "breakpoints": true
     }
   ]
 }

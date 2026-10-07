@@ -1,4 +1,9 @@
 import { createHash } from 'node:crypto'
+import {
+  formatTitle,
+  type TitleFormatting,
+  titleFormattingFromPrefix,
+} from '@calendar-aggregator/db/title-formatting'
 import ICAL from 'ical.js'
 
 export class CalendarParseError extends Error {}
@@ -103,7 +108,13 @@ export function sanitizeCalendar(text: string, sourceURL: string) {
 
 export function mergeCalendars(
   name: string,
-  snapshots: { id: string; url: string; prefix: string; snapshot: string }[],
+  snapshots: {
+    id: string
+    url: string
+    prefix: string
+    snapshot: string
+    titleFormatting?: TitleFormatting | null
+  }[],
 ) {
   const output = new ICAL.Component(['vcalendar', [], []])
   output.addPropertyWithValue('version', '2.0')
@@ -148,11 +159,12 @@ export function mergeCalendars(
       event.updatePropertyWithValue('uid', identity(source.id, String(uid)))
       const title = event.getFirstPropertyValue('summary')
 
-      if (typeof title === 'string' || source.prefix) {
-        event.updatePropertyWithValue(
-          'summary',
-          `${source.prefix}${source.prefix ? ' ' : ''}${title ?? ''}`,
-        )
+      const formatted = formatTitle(
+        typeof title === 'string' ? title : '',
+        source.titleFormatting ?? titleFormattingFromPrefix(source.prefix),
+      ).title
+      if (typeof title === 'string' || formatted) {
+        event.updatePropertyWithValue('summary', formatted)
       }
 
       if (input.getFirstPropertyValue('method') === 'CANCEL') {
