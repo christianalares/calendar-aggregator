@@ -223,9 +223,6 @@ importers:
       '@fontsource-variable/nunito-sans':
         specifier: ^5.3.0
         version: 5.3.0
-      '@radix-ui/react-dialog':
-        specifier: ^1.1.23
-        version: 1.1.23(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@t3-oss/env-core':
         specifier: 0.13.11
         version: 0.13.11(typescript@5.9.3)(zod@4.6.5)
@@ -272,8 +269,8 @@ importers:
         specifier: npm:nitro-nightly@3.0.1-20261006-045005-6bb682ef
         version: nitro-nightly@3.0.1-20261006-045005-6bb682ef
       pushmodal:
-        specifier: 1.0.5
-        version: 1.0.5(@radix-ui/react-dialog@1.1.23(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: 1.1.0
+        version: 1.1.0(@base-ui/react@1.8.0(@date-fns/tz@1.5.0)(@types/react@19.2.14)(date-fns@4.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@radix-ui/react-dialog@1.1.23(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
         specifier: 19.2.4
         version: 19.2.4
@@ -3403,12 +3400,16 @@ packages:
     resolution: {integrity: sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==}
     engines: {node: '>= 0.10'}
 
-  pushmodal@1.0.5:
-    resolution: {integrity: sha512-0k245kZyah2rl3p7GmHX1UAVg4F7FF7nH6UhVbkwUTLOGTHgDwW+8AJKucRnEz6Wjzc7kOxJI6tFxqtuyYDVMA==}
+  pushmodal@1.1.0:
+    resolution: {integrity: sha512-YrXTCKyuyi9u5tfBsGv3h1dCYG3DqsdlfOHfMnbq+xw1rV81TQyXhkuzJvl+UXeeiS49C8JWDoXYTh+Gb0vdBg==}
     peerDependencies:
+      '@base-ui/react': ^1.0.0
       '@radix-ui/react-dialog': ^1.0.0
       react: ^16.12.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0
       react-dom: ^16.12.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0
+    peerDependenciesMeta:
+      '@base-ui/react':
+        optional: true
 
   qs@6.16.0:
     resolution: {integrity: sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==}
@@ -6569,12 +6570,14 @@ snapshots:
       forwarded: 0.2.0
       ipaddr.js: 1.9.1
 
-  pushmodal@1.0.5(@radix-ui/react-dialog@1.1.23(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  pushmodal@1.1.0(@base-ui/react@1.8.0(@date-fns/tz@1.5.0)(@types/react@19.2.14)(date-fns@4.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@radix-ui/react-dialog@1.1.23(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
       '@radix-ui/react-dialog': 1.1.23(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       mitt: 3.0.1
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
+    optionalDependencies:
+      '@base-ui/react': 1.8.0(@date-fns/tz@1.5.0)(@types/react@19.2.14)(date-fns@4.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
   qs@6.16.0:
     dependencies:

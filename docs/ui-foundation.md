@@ -40,34 +40,37 @@ Keep overlay components in their respective directories and return the matching
 `DialogContent`, `SheetContent`, or `AlertDialogContent`. Do not add local open-state
 flags or inline dialog definitions to dashboard components.
 
-Every registration must explicitly supply the correct **Base UI wrapper** from
-`src/components/overlays/pushmodal-wrappers.tsx`:
+Import `createPushModal` from `pushmodal/base-ui` (PushModal 1.1.0). Modal
+registrations use shorthand components with the package's Base UI `Dialog.Root`.
+The alerts registry supplies `Wrapper: AlertDialog` at the factory level, and the
+sheets registry supplies `Wrapper: Sheet`. Individual registrations can still
+provide a wrapper override when needed.
 
 ```tsx
-modals: {
-  source: { Component: SourceModal, Wrapper: ModalWrapper },
-}
+import { createPushModal } from 'pushmodal/base-ui'
+
+const { pushModal, popModal, ModalProvider } = createPushModal({
+  modals: { source: SourceModal },
+})
 
 pushModal('source', { ownerId })
 popModal('source')
 ```
 
-For a sheet use `SheetWrapper`; for a confirmation use `AlertWrapper`. Avoid
-shorthand registrations: `pushmodal` otherwise creates a Radix root that cannot
-provide context to Base UI content. `@radix-ui/react-dialog` remains installed
-because `pushmodal` imports it internally and declares it as a peer dependency;
-application overlays render Base UI roots.
+The package now supplies matching Base UI context directly, so local mount-state
+wrappers are unnecessary. The original `pushmodal` entry still defaults to Radix;
+use the Base UI entry for application overlays. Radix remains a required package
+peer for backward compatibility and is installed automatically by pnpm, but the
+Base UI entry loads no Radix runtime or declaration dependency.
 
-The wrappers ignore `defaultOpen` and initially render closed, then apply the
-registry's controlled state after mounting. This lets Base UI observe the opening
-transition. `pushmodal` retains closed entries for 300 ms, so keep exit transitions
-below that duration (the starter dialogs use 100 ms, sheets 200 ms). Mutation errors
-stay in the overlay so the owner can retry; confirmation actions close only after
-a successful mutation and query invalidation.
+`pushmodal` retains closed entries for 300 ms, so keep exit transitions below that
+duration (dialogs use 100 ms, sheets 200 ms). Mutation errors stay in the overlay
+so the owner can retry; confirmation actions close only after a successful
+mutation and query invalidation.
 
-`createResponsiveWrapper` has Radix-specific content types, so it is not used in
-this setup. If responsive dialog/sheet switching is introduced later, adapt it to
-Base UI explicitly rather than applying type casts.
+The Base UI entry also exports `createResponsiveWrapper` with inferred root and
+content props for the supplied primitives. It is available if responsive
+dialog/sheet switching is introduced later.
 
 ## Theme and layout
 

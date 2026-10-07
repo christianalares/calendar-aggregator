@@ -1,9 +1,10 @@
-import { createPushModal } from 'pushmodal'
+import { createPushModal } from 'pushmodal/base-ui'
 
-// Register future sheets as { Component: YourSheet, Wrapper: SheetWrapper }
-// using SheetWrapper from ../overlays/pushmodal-wrappers.
+import { Sheet } from '@/components/ui/sheet'
+
+// Register future sheets with shorthand components; the factory supplies Sheet.
 export const {
   pushModal: pushSheet,
   popModal: popSheet,
   ModalProvider: SheetProvider,
-} = createPushModal({ modals: {} })
+} = createPushModal({ Wrapper: Sheet, modals: {} })

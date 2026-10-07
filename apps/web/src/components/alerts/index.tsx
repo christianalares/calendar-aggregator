@@ -1,5 +1,5 @@
-import { createPushModal } from 'pushmodal'
-import { AlertWrapper } from '@/components/overlays/pushmodal-wrappers'
+import { createPushModal } from 'pushmodal/base-ui'
+import { AlertDialog } from '@/components/ui/alert-dialog'
 import { DeleteCalendarAlert } from './delete-calendar-alert'
 import { DeleteSourceAlert } from './delete-source-alert'
 import { ReplaceCalendarLinkAlert } from './replace-calendar-link-alert'
@@ -10,10 +10,11 @@ export const {
   popModal: popAlert,
   ModalProvider: AlertProvider,
 } = createPushModal({
+  Wrapper: AlertDialog,
   modals: {
-    deleteSource: { Component: DeleteSourceAlert, Wrapper: AlertWrapper },
-    deleteCalendar: { Component: DeleteCalendarAlert, Wrapper: AlertWrapper },
-    replaceCalendarLink: { Component: ReplaceCalendarLinkAlert, Wrapper: AlertWrapper },
-    revokeInvite: { Component: RevokeInviteAlert, Wrapper: AlertWrapper },
+    deleteSource: DeleteSourceAlert,
+    deleteCalendar: DeleteCalendarAlert,
+    replaceCalendarLink: ReplaceCalendarLinkAlert,
+    revokeInvite: RevokeInviteAlert,
   },
 })
