@@ -109,8 +109,28 @@ describe('the production fetch policy', () => {
       }),
     ).rejects.toThrow('too long')
   })
+  it.each([200, 403, 503])(
+    'reports browser challenges for HTTP %s without reading private HTML',
+    async (status) => {
+      const release = vi.fn(async () => ({ done: true as const, value: undefined }))
+      const read = vi.fn(async () => ({ done: false as const, value: Buffer.from('private HTML') }))
+      await expect(
+        fetchCalendar('https://provider.test/feed?token=private-secret', {
+          resolve: publicDNS,
+          transport: async () => ({
+            status,
+            browserChallenge: true,
+            body: { [Symbol.asyncIterator]: () => ({ next: read, return: release }) },
+          }),
+        }),
+      ).rejects.toThrow('Cloudflare protection requires a browser check')
+      expect(read).not.toHaveBeenCalled()
+      expect(release).toHaveBeenCalledOnce()
+    },
+  )
   it('connects to the pinned address while preserving the HTTP host', async () => {
     const server = http.createServer((request, response) => {
+      response.setHeader('cf-mitigated', 'challenge')
       response.end(request.headers.host)
     })
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
@@ -125,6 +145,7 @@ describe('the production fetch policy', () => {
         { address: '127.0.0.1', family: 4 },
         new AbortController().signal,
       )
+      expect(response.browserChallenge).toBe(true)
       let text = ''
       for await (const chunk of response.body) {
         text += Buffer.from(chunk).toString()

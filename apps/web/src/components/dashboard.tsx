@@ -298,6 +298,11 @@ export function CalendarDashboard({ ownerId, baseURL }: { ownerId: string; baseU
                     <span className="flex items-center gap-2">
                       <SourceMarker sourceId={source.id} />
                       {source.name}
+                      {source.useBrowser && (
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
+                          Browser fallback
+                        </span>
+                      )}
                     </span>
                   </TableCell>
                   <TableCell>

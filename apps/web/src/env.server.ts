@@ -8,6 +8,8 @@ export const env = createEnv({
     ...envSchema.shape,
     DATABASE_URL: z.url().refine((value) => /^postgres(?:ql)?:$/.test(new URL(value).protocol)),
     APP_URL: z.url(),
+    BROWSER_FETCH_URL: z.url().optional(),
+    BROWSER_FETCH_SECRET: z.string().min(32).optional(),
     BETTER_AUTH_SECRET: z.string().min(32),
     OPERATOR_GOOGLE_EMAIL: z.email().optional(),
     GOOGLE_CLIENT_ID: z.string().optional(),

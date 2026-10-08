@@ -13,6 +13,7 @@ export const sourceInput = z.object({
       'Use an HTTPS or HTTP subscription URL.',
     ),
   enabled: z.boolean(),
+  useBrowser: z.boolean().default(false),
 })
 export const outputInput = z.object({
   id: z.uuid().optional(),

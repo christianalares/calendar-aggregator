@@ -4,6 +4,8 @@
     "ignoreUnknown": true,
     "includes": [
       "apps/web/src/**",
+      "apps/browser-fetch/**",
+      "!apps/browser-fetch/node_modules",
       "apps/web/*.ts",
       "packages/db/src/**",
       "packages/db/*.ts",

@@ -100,6 +100,7 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
   await page
     .getByLabel('Calendar subscription URL')
     .fill('https://provider.test/secret-calendar-token.ics')
+  await page.getByRole('checkbox', { name: 'Use browser fallback' }).check()
   let failed = false
   await page.route('**/_serverFn/**', async (route) => {
     if (route.request().method() === 'POST' && !failed) {
@@ -136,6 +137,7 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
   })
   expect(await nonMember.text()).toContain('Sign in to continue')
   expect((await store.list(ownerId)).sources).toHaveLength(1)
+  expect((await store.list(ownerId)).sources[0]?.useBrowser).toBe(true)
   const csrfResponse = await request.post(savedRequest.url(), {
     headers: { ...headers, origin: 'https://evil.test', 'sec-fetch-site': 'cross-site' },
     data: savedRequest.postData(),
@@ -144,6 +146,7 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
   await page.getByRole('button', { name: 'Actions for source Football' }).click()
   await page.getByRole('menuitem', { name: 'Edit', exact: true }).click()
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Football')
+  await expect(page.getByRole('checkbox', { name: 'Use browser fallback' })).toBeChecked()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Actions for source Football' })).toBeFocused()

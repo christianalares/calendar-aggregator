@@ -20,7 +20,12 @@ export type FetchTransport = (
   url: URL,
   address: ResolvedAddress,
   signal: AbortSignal,
-) => Promise<{ status: number; location?: string; body: AsyncIterable<Uint8Array> }>
+) => Promise<{
+  status: number
+  location?: string
+  browserChallenge?: boolean
+  body: AsyncIterable<Uint8Array>
+}>
 
 export const pinnedTransport: FetchTransport = (url, address, signal) => {
   return new Promise((resolve, reject) => {
@@ -47,6 +52,7 @@ export const pinnedTransport: FetchTransport = (url, address, signal) => {
         resolve({
           status: response.statusCode ?? 0,
           location: response.headers.location,
+          browserChallenge: response.headers['cf-mitigated'] === 'challenge',
           body: response,
         })
       },
@@ -109,6 +115,14 @@ export async function fetchCalendar(
       }
 
       const response = await (options.transport ?? pinnedTransport)(url, address, controller.signal)
+
+      if (response.browserChallenge) {
+        const iterator = response.body[Symbol.asyncIterator]()
+        await iterator.return?.()
+        throw new FetchError(
+          'The calendar provider’s Cloudflare protection requires a browser check and is blocking server access. Ask the provider to allow calendar subscription requests.',
+        )
+      }
 
       if ([301, 302, 303, 307, 308].includes(response.status)) {
         // End the current body/socket before following a different destination.

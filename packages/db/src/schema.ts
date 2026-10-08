@@ -96,6 +96,7 @@ export const sources = pgTable('source', {
   name: text('name').notNull(),
   url: text('url').notNull(),
   enabled: boolean('enabled').notNull().default(true),
+  useBrowser: boolean('use_browser').notNull().default(false),
   version: integer('version').notNull().default(1),
   snapshot: text('snapshot'),
   lastAttemptAt: time('last_attempt_at'),

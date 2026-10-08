@@ -15,6 +15,13 @@
       "when": 1791401675128,
       "tag": "0001_hard_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791470821580,
+      "tag": "0002_parallel_terrax",
+      "breakpoints": true
     }
   ]
 }

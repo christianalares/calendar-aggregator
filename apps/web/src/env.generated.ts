@@ -4,6 +4,8 @@ import { z } from 'zod'
 export const envSchema = z.object({
   "APP_URL": z.string(),
   "BETTER_AUTH_SECRET": z.string(),
+  "BROWSER_FETCH_SECRET": z.string(),
+  "BROWSER_FETCH_URL": z.string(),
   "DATABASE_URL": z.string(),
   "GOOGLE_CLIENT_ID": z.string(),
   "GOOGLE_CLIENT_SECRET": z.string(),

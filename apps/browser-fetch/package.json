@@ -1,0 +1,13 @@
+{
+  "name": "@calendar-aggregator/browser-fetch",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.ts",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ipaddr.js": "2.3.0",
+    "patchright": "1.63.0"
+  }
+}

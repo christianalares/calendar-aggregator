@@ -7,7 +7,9 @@
     "OPERATOR_GOOGLE_EMAIL",
     "GOOGLE_CLIENT_ID",
     "GOOGLE_CLIENT_SECRET",
-    "PORT"
+    "PORT",
+    "BROWSER_FETCH_URL",
+    "BROWSER_FETCH_SECRET"
   ],
   "tasks": {
     "build": {

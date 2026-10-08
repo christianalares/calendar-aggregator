@@ -33,6 +33,7 @@ export function createCalendarStore(db: Database) {
             name: sources.name,
             url: sources.url,
             enabled: sources.enabled,
+            useBrowser: sources.useBrowser,
             lastAttemptAt: sources.lastAttemptAt,
             lastSuccessAt: sources.lastSuccessAt,
             lastError: sources.lastError,
@@ -72,12 +73,17 @@ export function createCalendarStore(db: Database) {
         })),
       }
     },
-    async saveSource(ownerId: string, input: z.infer<typeof sourceInput>) {
+    async saveSource(ownerId: string, input: z.input<typeof sourceInput>) {
       if (!input.id) {
         const id = randomUUID()
-        await db
-          .insert(sources)
-          .values({ id, ownerId, name: input.name, url: input.url, enabled: input.enabled })
+        await db.insert(sources).values({
+          id,
+          ownerId,
+          name: input.name,
+          url: input.url,
+          enabled: input.enabled,
+          useBrowser: input.useBrowser ?? false,
+        })
 
         return { id }
       }
@@ -88,6 +94,7 @@ export function createCalendarStore(db: Database) {
           name: input.name,
           url: input.url,
           enabled: input.enabled,
+          useBrowser: input.useBrowser ?? false,
           version: sql`${sources.version} + 1`,
           nextFetchAt: null,
           leaseUntil: null,

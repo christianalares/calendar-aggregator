@@ -255,3 +255,51 @@ describe('durable bounded source cache and publication', () => {
     expect(previewCalendar(stale.text)).toHaveLength(4)
   })
 })
+
+describe('browser escape hatch', () => {
+  it('persists the setting, invalidates freshness on edits and uses the same durable cache', async () => {
+    const a = await setup()
+    const sourceId = a.selected[0]!.sourceId
+    const original = (await store.list(a.owner)).sources[0]!
+    expect(original.useBrowser).toBe(false)
+    const fetch = vi.fn(async () => fixture)
+    let clock = Date.now()
+    const feed = createFeedService(db, fetch, () => clock)
+    await feed.forToken(a.output.token)
+    await store.saveSource(a.owner, { ...original, useBrowser: true })
+    expect((await store.list(a.owner)).sources[0]?.useBrowser).toBe(true)
+    await feed.checkSource(a.owner, sourceId)
+    expect(fetch).toHaveBeenLastCalledWith(original.url, { useBrowser: true })
+    await feed.forToken(a.output.token)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    clock += cachePolicy.freshMs + 1
+    fetch.mockRejectedValueOnce(new FetchError('Browser timed out.'))
+    const stale = await feed.forToken(a.output.token)
+    expect(stale.health[0]?.status).toBe('stale')
+    expect(previewCalendar(stale.text)).toHaveLength(4)
+  })
+  it('does not reclaim a browser fetch after the normal 15-second lease expires', async () => {
+    const a = await setup()
+    const original = (await store.list(a.owner)).sources[0]!
+    await store.saveSource(a.owner, { ...original, useBrowser: true })
+    let clock = Date.now()
+    let finish!: (value: string) => void
+    let started!: () => void
+    const ready = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    const fetch = vi.fn(() => {
+      started()
+      return new Promise<string>((resolve) => {
+        finish = resolve
+      })
+    })
+    const first = createFeedService(db, fetch, () => clock).checkSource(a.owner, original.id)
+    await ready
+    clock += 20_000
+    await createFeedService(db, fetch, () => clock).checkSource(a.owner, original.id)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    finish(fixture)
+    await first
+  })
+})

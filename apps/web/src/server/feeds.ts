@@ -12,7 +12,12 @@ export const cachePolicy = {
 }
 export class FeedUnavailable extends Error {}
 
-export function createFeedService(db: Database, fetch = fetchCalendar, now = () => Date.now()) {
+export function createFeedService(
+  db: Database,
+  fetch: (url: string, options?: { useBrowser: boolean }) => Promise<string> = (url) =>
+    fetchCalendar(url),
+  now = () => Date.now(),
+) {
   const store = createCalendarStore(db)
   let active = 0
   const waiting: (() => void)[] = []
@@ -32,7 +37,7 @@ export function createFeedService(db: Database, fetch = fetchCalendar, now = () 
 
     try {
       const attempt = new Date(now())
-      const lease = new Date(now() + cachePolicy.leaseMs)
+      const lease = new Date(now() + (source.useBrowser ? 90_000 : cachePolicy.leaseMs))
       const [claimed] = await db
         .update(sources)
         .set({ leaseUntil: lease, lastAttemptAt: attempt })
@@ -52,7 +57,10 @@ export function createFeedService(db: Database, fetch = fetchCalendar, now = () 
         let error: string | null = null
 
         try {
-          snapshot = sanitizeCalendar(await fetch(claimed.url), claimed.url)
+          snapshot = sanitizeCalendar(
+            await fetch(claimed.url, { useBrowser: claimed.useBrowser }),
+            claimed.url,
+          )
         } catch (failure) {
           error =
             failure instanceof FetchError || failure instanceof CalendarParseError

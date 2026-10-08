@@ -1,0 +1,1 @@
+ALTER TABLE "source" ADD COLUMN "use_browser" boolean DEFAULT false NOT NULL;

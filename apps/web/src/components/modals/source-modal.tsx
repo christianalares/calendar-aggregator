@@ -21,6 +21,7 @@ export function SourceModal({ ownerId, source }: { ownerId: string; source?: Sou
   const [name, setName] = useState(source?.name ?? '')
   const [url, setURL] = useState(source?.url ?? '')
   const [enabled, setEnabled] = useState(source?.enabled ?? true)
+  const [useBrowser, setUseBrowser] = useState(source?.useBrowser ?? false)
   const save = useMutation(mutationOptions.sources.save(ownerId))
 
   return (
@@ -36,7 +37,7 @@ export function SourceModal({ ownerId, source }: { ownerId: string; source?: Sou
         onSubmit={async (event) => {
           event.preventDefault()
           try {
-            await save.mutateAsync({ data: { id: source?.id, name, url, enabled } })
+            await save.mutateAsync({ data: { id: source?.id, name, url, enabled, useBrowser } })
             popModal('source')
           } catch {
             // Keep entered values so the owner can retry.
@@ -71,6 +72,16 @@ export function SourceModal({ ownerId, source }: { ownerId: string; source?: Sou
         <div className="flex items-center gap-2">
           <Checkbox id={`${id}-enabled`} checked={enabled} onCheckedChange={setEnabled} />
           <Label htmlFor={`${id}-enabled`}>Include this source in calendars</Label>
+        </div>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Checkbox id={`${id}-browser`} checked={useBrowser} onCheckedChange={setUseBrowser} />
+            <Label htmlFor={`${id}-browser`}>Use browser fallback</Label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Try a browser connection if the calendar provider blocks the normal connection. Checks
+            may take up to a minute. Updates use the same 15-minute cache.
+          </p>
         </div>
         <ErrorMessage error={save.error} />
         <DialogFooter>
