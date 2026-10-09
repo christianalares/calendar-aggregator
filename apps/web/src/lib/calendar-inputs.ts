@@ -1,3 +1,4 @@
+import { eventFiltersSchema } from '@calendar-aggregator/db/event-filters'
 import { titleFormattingSchema } from '@calendar-aggregator/db/title-formatting'
 import { z } from 'zod'
 
@@ -24,6 +25,7 @@ export const outputInput = z.object({
         sourceId: z.uuid(),
         prefix: z.string().max(100).optional(),
         titleFormatting: titleFormattingSchema.optional(),
+        eventFilters: eventFiltersSchema.optional(),
       }),
     )
     .max(100)

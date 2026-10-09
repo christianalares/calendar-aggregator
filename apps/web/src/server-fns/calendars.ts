@@ -1,3 +1,4 @@
+import { eventFiltersSchema } from '@calendar-aggregator/db/event-filters'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { outputInput, sourceInput } from '../lib/calendar-inputs'
@@ -26,6 +27,12 @@ async function operation<T>(
 export const listCalendars = createServerFn({ method: 'GET' })
   .middleware([withAuthMiddleware])
   .handler(({ context }) => operation((store) => store.list(context.user.id)))
+export const previewFilters = createServerFn({ method: 'POST' })
+  .middleware([withAuthMiddleware])
+  .validator(z.object({ sourceId: z.uuid(), rules: eventFiltersSchema }))
+  .handler(({ context, data }) =>
+    operation((store) => store.previewFilters(context.user.id, data.sourceId, data.rules)),
+  )
 export const saveSource = createServerFn({ method: 'POST' })
   .middleware([withAuthMiddleware])
   .validator(sourceInput)

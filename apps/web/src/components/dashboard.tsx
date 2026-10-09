@@ -5,6 +5,7 @@ import {
   Copy,
   Ellipsis,
   Eye,
+  Filter,
   Pencil,
   Plus,
   RefreshCw,
@@ -124,6 +125,15 @@ function OutputCard({
                 >
                   <Pencil aria-hidden="true" />
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!output.sources.length}
+                  onClick={() =>
+                    pushModal('calendar', { ownerId, sources, output, eventFiltersOnly: true })
+                  }
+                >
+                  <Filter aria-hidden="true" />
+                  Event filters
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => pushAlert('replaceCalendarLink', { ownerId, id: output.id })}

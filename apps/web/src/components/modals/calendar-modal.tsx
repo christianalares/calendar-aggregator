@@ -1,3 +1,4 @@
+import { eventFiltersSchema } from '@calendar-aggregator/db/event-filters'
 import {
   titleFormattingFromPrefix,
   titleFormattingSchema,
@@ -5,6 +6,7 @@ import {
 import { useMutation } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { ErrorMessage } from '@/components/error-message'
+import { EventFiltersEditor } from '@/components/event-filters-editor'
 import { SourceMarker } from '@/components/source-badge'
 import { TitleFormattingEditor, withTextIds } from '@/components/title-formatting-editor'
 import { Badge } from '@/components/ui/badge'
@@ -28,17 +30,20 @@ export function CalendarModal({
   output,
   sources,
   titleFormattingOnly = false,
+  eventFiltersOnly = false,
 }: {
   ownerId: string
   output?: Output
   sources: Source[]
   titleFormattingOnly?: boolean
+  eventFiltersOnly?: boolean
 }) {
   const id = useId()
   const [name, setName] = useState(output?.name ?? '')
   const [selected, setSelected] = useState(
     output?.sources.map((source) => ({
       sourceId: source.sourceId,
+      eventFilters: source.eventFilters,
       titleFormatting: withTextIds(
         source.titleFormatting ?? titleFormattingFromPrefix(source.prefix),
       ),
@@ -46,24 +51,31 @@ export function CalendarModal({
   )
   const save = useMutation(mutationOptions.outputs.save(ownerId))
   const [focusedSource, setFocusedSource] = useState(selected[0]?.sourceId)
+  const settingsOnly = titleFormattingOnly || eventFiltersOnly
   const valid = selected.every(
-    (item) => titleFormattingSchema.safeParse(item.titleFormatting).success,
+    (item) =>
+      titleFormattingSchema.safeParse(item.titleFormatting).success &&
+      eventFiltersSchema.safeParse(item.eventFilters).success,
   )
 
   return (
     <DialogContent className="max-h-[90dvh] overflow-y-auto font-sans sm:max-w-2xl">
       <DialogHeader>
         <DialogTitle>
-          {titleFormattingOnly
-            ? `Title formatting · ${output?.name}`
-            : output
-              ? 'Edit calendar'
-              : 'Create a calendar'}
+          {eventFiltersOnly
+            ? `Event filters · ${output?.name}`
+            : titleFormattingOnly
+              ? `Title formatting · ${output?.name}`
+              : output
+                ? 'Edit calendar'
+                : 'Create a calendar'}
         </DialogTitle>
         <DialogDescription>
-          {titleFormattingOnly
-            ? 'Rename events with captures, then add a prefix or suffix to the result.'
-            : 'Combine sources into one read-only subscription.'}
+          {eventFiltersOnly
+            ? 'Filter out matching events and preview the exclusions before saving.'
+            : titleFormattingOnly
+              ? 'Rename events with captures, then add a prefix or suffix to the result.'
+              : 'Combine sources into one read-only subscription.'}
         </DialogDescription>
       </DialogHeader>
       <form
@@ -79,7 +91,7 @@ export function CalendarModal({
           }
         }}
       >
-        {titleFormattingOnly && (
+        {settingsOnly && (
           <div className="flex flex-wrap gap-1">
             {sources
               .filter((source) => selected.some((item) => item.sourceId === source.id))
@@ -98,7 +110,7 @@ export function CalendarModal({
               ))}
           </div>
         )}
-        {!titleFormattingOnly && (
+        {!settingsOnly && (
           <div className="space-y-2">
             <Label htmlFor={`${id}-name`}>Calendar name</Label>
             <Input
@@ -112,11 +124,11 @@ export function CalendarModal({
           </div>
         )}
         <fieldset className="m-0 space-y-3 p-0">
-          {!titleFormattingOnly && (
+          {!settingsOnly && (
             <>
               <legend className="text-sm font-medium">Sources to include</legend>
               <p className="m-0 text-sm text-muted-foreground">
-                Choose sources and customize how their event titles appear.
+                Choose sources, customize titles, and filter out unwanted events.
               </p>
             </>
           )}
@@ -127,16 +139,14 @@ export function CalendarModal({
           )}
           {sources.map((source) => {
             const membership = selected.find((item) => item.sourceId === source.id)
-            if (titleFormattingOnly && !membership) return null
+            if (settingsOnly && !membership) return null
             return (
               <div
                 key={source.id}
-                hidden={titleFormattingOnly && focusedSource !== source.id}
-                className={
-                  titleFormattingOnly ? 'min-w-0' : 'min-w-0 space-y-3 rounded-xl border p-3'
-                }
+                hidden={settingsOnly && focusedSource !== source.id}
+                className={settingsOnly ? 'min-w-0' : 'min-w-0 space-y-3 rounded-xl border p-3'}
               >
-                {!titleFormattingOnly && (
+                {!settingsOnly && (
                   <div className="flex min-w-0 items-center gap-2">
                     <Checkbox
                       id={`${id}-${source.id}`}
@@ -148,6 +158,7 @@ export function CalendarModal({
                                 ...previous,
                                 {
                                   sourceId: source.id,
+                                  eventFilters: [],
                                   titleFormatting: titleFormattingFromPrefix(),
                                 },
                               ]
@@ -161,7 +172,7 @@ export function CalendarModal({
                     {!source.enabled && <Badge variant="secondary">Disabled</Badge>}
                   </div>
                 )}
-                {membership && (
+                {membership && !eventFiltersOnly && (
                   <TitleFormattingEditor
                     sourceName={source.name}
                     sampleTitles={source.sampleTitles}
@@ -175,6 +186,23 @@ export function CalendarModal({
                     }}
                   />
                 )}
+                {membership &&
+                  !titleFormattingOnly &&
+                  (!settingsOnly || focusedSource === source.id) && (
+                    <EventFiltersEditor
+                      ownerId={ownerId}
+                      source={source}
+                      value={membership.eventFilters}
+                      expanded={eventFiltersOnly}
+                      onChange={(eventFilters) => {
+                        setSelected((previous) =>
+                          previous.map((item) =>
+                            item.sourceId === source.id ? { ...item, eventFilters } : item,
+                          ),
+                        )
+                      }}
+                    />
+                  )}
               </div>
             )
           })}
@@ -187,9 +215,11 @@ export function CalendarModal({
           <Button type="submit" disabled={save.isPending || !valid}>
             {save.isPending
               ? 'Saving...'
-              : titleFormattingOnly
-                ? 'Save formatting'
-                : 'Save calendar'}
+              : eventFiltersOnly
+                ? 'Save filters'
+                : titleFormattingOnly
+                  ? 'Save formatting'
+                  : 'Save calendar'}
           </Button>
         </DialogFooter>
       </form>

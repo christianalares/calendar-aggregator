@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema.ts",
+    "./event-filters": "./src/event-filters.ts",
     "./title-formatting": "./src/title-formatting.ts"
   },
   "scripts": {

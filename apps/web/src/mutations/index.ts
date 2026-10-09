@@ -9,6 +9,7 @@ export const mutationOptions = {
         mutationFn: serverFns.sources.save,
         onSuccess: async (_data, _variables, _result, context) => {
           await context.client.invalidateQueries(queryOptions.calendars.list(ownerId))
+          await context.client.invalidateQueries({ queryKey: ['filter-preview', ownerId] })
           await context.client.invalidateQueries({ queryKey: ['outputs', ownerId] })
         },
       }),
@@ -17,6 +18,7 @@ export const mutationOptions = {
         mutationFn: serverFns.sources.remove,
         onSuccess: async (_data, _variables, _result, context) => {
           await context.client.invalidateQueries(queryOptions.calendars.list(ownerId))
+          await context.client.invalidateQueries({ queryKey: ['filter-preview', ownerId] })
           await context.client.invalidateQueries({ queryKey: ['outputs', ownerId] })
         },
       }),
@@ -25,6 +27,7 @@ export const mutationOptions = {
         mutationFn: serverFns.sources.check,
         onSuccess: async (_data, _variables, _result, context) => {
           await context.client.invalidateQueries(queryOptions.calendars.list(ownerId))
+          await context.client.invalidateQueries({ queryKey: ['filter-preview', ownerId] })
           await context.client.invalidateQueries({ queryKey: ['outputs', ownerId] })
         },
       }),

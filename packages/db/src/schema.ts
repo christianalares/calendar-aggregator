@@ -8,6 +8,7 @@ import {
   text,
   timestamp,
 } from 'drizzle-orm/pg-core'
+import type { EventFilterRule } from './event-filters'
 import type { TitleFormatting } from './title-formatting'
 
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
@@ -128,6 +129,7 @@ export const outputSources = pgTable(
       .references(() => sources.id, { onDelete: 'cascade' }),
     prefix: text('prefix').notNull().default(''),
     titleFormatting: jsonb('title_formatting').$type<TitleFormatting>(),
+    eventFilters: jsonb('event_filters').$type<EventFilterRule[]>().notNull().default([]),
   },
   (table) => [primaryKey({ columns: [table.outputId, table.sourceId] })],
 )

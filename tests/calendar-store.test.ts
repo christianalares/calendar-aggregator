@@ -6,6 +6,7 @@ import { createCalendarStore } from '../apps/web/src/server/calendar-store'
 import { cachePolicy, createFeedService } from '../apps/web/src/server/feeds'
 import { previewCalendar } from '../apps/web/src/server/ical'
 import { FetchError } from '../apps/web/src/server/upstream'
+import type { EventFilterRule } from '../packages/db/src/event-filters'
 import { authUsers, connectDatabase, members, sources } from '../packages/db/src/index'
 import { type TitleRule, titleFormattingFromPrefix } from '../packages/db/src/title-formatting'
 
@@ -49,6 +50,73 @@ async function setup(count = 1) {
 }
 
 describe('owner-scoped configuration', () => {
+  it('previews unsaved filters, persists them per output and preserves cached snapshots and URLs', async () => {
+    const a = await setup()
+    const sourceId = a.selected[0]!.sourceId
+    const feed = createFeedService(db, async () => fixture)
+    const filters: EventFilterRule[] = [
+      {
+        id: 'exclude-holiday',
+        enabled: true,
+        field: 'title',
+        operator: 'contains',
+        value: 'away',
+        caseSensitive: false,
+      },
+    ]
+    expect(await store.previewFilters(a.owner, sourceId, filters)).toMatchObject({
+      available: false,
+      total: 0,
+    })
+    await feed.forToken(a.output.token)
+    expect(await store.previewFilters(a.owner, sourceId, filters)).toMatchObject({
+      available: true,
+      total: 4,
+      excludedCount: 1,
+      keptCount: 3,
+    })
+    expect((await store.list(a.owner)).outputs[0]!.sources[0]!.eventFilters).toEqual([])
+    await expect(store.previewFilters(await owner(), sourceId, filters)).rejects.toThrow(
+      'not found',
+    )
+    await store.saveOutput(a.owner, {
+      id: a.output.id,
+      name: a.output.name,
+      sources: [{ sourceId, prefix: '⚽', eventFilters: filters }],
+    })
+    const other = await store.saveOutput(a.owner, { name: 'Unfiltered', sources: a.selected })
+    expect((await store.list(a.owner)).outputs[0]!.sources[0]!.eventFilters).toEqual(filters)
+    expect((await store.requireOutput(a.owner, a.output.id)).token).toBe(a.output.token)
+    expect((await feed.preview(a.owner, a.output.id)).events).toHaveLength(3)
+    expect(previewCalendar((await feed.forToken(a.output.token)).text)).toHaveLength(3)
+    expect((await feed.preview(a.owner, other.id)).events).toHaveLength(4)
+    const [source] = await db.select().from(sources).where(eq(sources.id, sourceId))
+    expect(source!.snapshot).toContain('SUMMARY:Weekend away')
+    await db
+      .update(sources)
+      .set({ lastError: 'Provider unavailable' })
+      .where(eq(sources.id, sourceId))
+    expect(await store.previewFilters(a.owner, sourceId, filters)).toMatchObject({
+      available: true,
+      error: 'Provider unavailable',
+      excludedCount: 1,
+    })
+    const restarted = connectDatabase(databaseURL)
+    try {
+      expect(
+        (await createCalendarStore(restarted.db).list(a.owner)).outputs[0]!.sources[0]!
+          .eventFilters,
+      ).toEqual(filters)
+    } finally {
+      await restarted.close()
+    }
+    await store.saveOutput(a.owner, {
+      id: a.output.id,
+      name: a.output.name,
+      sources: [{ sourceId, eventFilters: [{ ...filters[0]!, value: 'a' }] }],
+    })
+    expect(previewCalendar((await feed.forToken(a.output.token)).text)).toEqual([])
+  })
   it('persists per-output formatting and uses the same transformation in the feed and preview', async () => {
     const a = await setup()
     const rule: TitleRule = {

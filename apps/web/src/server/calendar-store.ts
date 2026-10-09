@@ -1,12 +1,13 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import { type Database, outputSources, outputs, sources } from '@calendar-aggregator/db'
+import type { EventFilterRule } from '@calendar-aggregator/db/event-filters'
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 
 import type { outputInput, sourceInput } from '../lib/calendar-inputs'
 
 import { CalendarError } from '../lib/errors'
-import { previewCalendar } from './ical'
+import { previewCalendar, previewEventFilters } from './ical'
 
 export { CalendarError } from '../lib/errors'
 
@@ -188,6 +189,23 @@ export function createCalendarStore(db: Database) {
       return rotated
     },
     requireOutput,
+    async previewFilters(ownerId: string, sourceId: string, rules: EventFilterRule[]) {
+      const [source] = await db
+        .select()
+        .from(sources)
+        .where(and(eq(sources.id, sourceId), eq(sources.ownerId, ownerId)))
+      if (!source) throw new CalendarError('Source not found.')
+      return {
+        available: source.snapshot !== null,
+        enabled: source.enabled,
+        lastSuccessAt: source.lastSuccessAt,
+        error: source.lastError,
+        ...previewEventFilters(
+          source.snapshot ?? 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR',
+          rules,
+        ),
+      }
+    },
     async outputForToken(token: string) {
       const [output] = await db.select().from(outputs).where(eq(outputs.token, token))
 
@@ -199,6 +217,7 @@ export function createCalendarStore(db: Database) {
           source: sources,
           prefix: outputSources.prefix,
           titleFormatting: outputSources.titleFormatting,
+          eventFilters: outputSources.eventFilters,
         })
         .from(outputSources)
         .innerJoin(sources, eq(outputSources.sourceId, sources.id))

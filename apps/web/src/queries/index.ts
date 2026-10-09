@@ -1,5 +1,5 @@
 import { queryOptions as defineQuery } from '@tanstack/react-query'
-import { serverFns } from '../server-fns'
+import { type MutationInput, serverFns } from '../server-fns'
 
 export const queryOptions = {
   auth: {
@@ -23,6 +23,15 @@ export const queryOptions = {
   calendars: {
     list: (ownerId: string) =>
       defineQuery({ queryKey: ['calendars', ownerId], queryFn: serverFns.calendars.list }),
+  },
+  sources: {
+    filterPreview: (ownerId: string, data: MutationInput['sources']['previewFilters']) =>
+      defineQuery({
+        queryKey: ['filter-preview', ownerId, data],
+        queryFn: () => serverFns.sources.previewFilters({ data }),
+        staleTime: 0,
+        retry: false,
+      }),
   },
   outputs: {
     preview: (ownerId: string, id: string) =>

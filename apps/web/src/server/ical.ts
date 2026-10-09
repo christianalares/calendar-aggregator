@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { type EventFilterRule, matchEventFilter } from '@calendar-aggregator/db/event-filters'
 import {
   formatTitle,
   type TitleFormatting,
@@ -106,6 +107,68 @@ export function sanitizeCalendar(text: string, sourceURL: string) {
   return calendar.toString()
 }
 
+function latestEvents(calendar: ICAL.Component) {
+  const events = new Map<string, ICAL.Component>()
+  for (const original of calendar.getAllSubcomponents('vevent')) {
+    const key = `${original.getFirstPropertyValue('uid')}\0${original.getFirstProperty('recurrence-id')?.toICALString() ?? ''}`
+    const previous = events.get(key)
+    const sequence = Number(original.getFirstPropertyValue('sequence') ?? 0)
+    const previousSequence = Number(previous?.getFirstPropertyValue('sequence') ?? 0)
+    if (!previous || sequence >= previousSequence) events.set(key, original)
+  }
+  return [...events.values()]
+}
+
+function eventText(component: ICAL.Component) {
+  return {
+    title: String(component.getFirstPropertyValue('summary') ?? ''),
+    description: String(component.getFirstPropertyValue('description') ?? ''),
+    location: String(component.getFirstPropertyValue('location') ?? ''),
+  }
+}
+
+function excludedEvents(events: ICAL.Component[], rules: EventFilterRule[]) {
+  const excluded = new Map<string, { rule: EventFilterRule; title: string }>()
+  for (const event of events) {
+    const text = eventText(event)
+    const rule = matchEventFilter(text, rules)
+    const uid = String(event.getFirstPropertyValue('uid'))
+    // Remove masters and exceptions together, so an exception cannot reintroduce a series.
+    if (rule && !excluded.has(uid)) excluded.set(uid, { rule, title: text.title })
+  }
+  return excluded
+}
+
+export function previewEventFilters(text: string, rules: EventFilterRule[]) {
+  const events = latestEvents(parseCalendar(text))
+  const excluded = excludedEvents(events, rules)
+  const filtered = events.filter((event) =>
+    excluded.has(String(event.getFirstPropertyValue('uid'))),
+  )
+  return {
+    total: events.length,
+    excludedCount: filtered.length,
+    keptCount: events.length - filtered.length,
+    events: filtered
+      .map((component) => {
+        const directMatch = matchEventFilter(eventText(component), rules)
+        const reason = directMatch
+          ? { rule: directMatch, title: eventText(component).title }
+          : excluded.get(String(component.getFirstPropertyValue('uid')))
+        if (!reason) throw new Error('Missing exclusion reason.')
+        return {
+          ...previewEvent(component),
+          description: eventText(component).description.slice(0, 500),
+          rule: reason.rule,
+          matchedTitle: reason.title,
+          seriesMatch: !directMatch,
+        }
+      })
+      .sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''))
+      .slice(0, 40),
+  }
+}
+
 export function mergeCalendars(
   name: string,
   snapshots: {
@@ -114,6 +177,7 @@ export function mergeCalendars(
     prefix: string
     snapshot: string
     titleFormatting?: TitleFormatting | null
+    eventFilters?: EventFilterRule[]
   }[],
 ) {
   const output = new ICAL.Component(['vcalendar', [], []])
@@ -140,20 +204,11 @@ export function mergeCalendars(
       }
     }
 
-    const events = new Map<string, ICAL.Component>()
+    const events = latestEvents(input)
+    const excluded = excludedEvents(events, source.eventFilters ?? [])
 
-    for (const original of input.getAllSubcomponents('vevent')) {
-      const key = `${original.getFirstPropertyValue('uid')}\0${original.getFirstProperty('recurrence-id')?.toICALString() ?? ''}`
-      const previous = events.get(key)
-      const sequence = Number(original.getFirstPropertyValue('sequence') ?? 0)
-      const previousSequence = Number(previous?.getFirstPropertyValue('sequence') ?? 0)
-
-      if (!previous || sequence >= previousSequence) {
-        events.set(key, original)
-      }
-    }
-
-    for (const original of events.values()) {
+    for (const original of events) {
+      if (excluded.has(String(original.getFirstPropertyValue('uid')))) continue
       const event = new ICAL.Component(structuredClone(original.toJSON()))
       const uid = event.getFirstPropertyValue('uid')
       event.updatePropertyWithValue('uid', identity(source.id, String(uid)))
@@ -263,24 +318,26 @@ function previewStart(start: ICAL.Time | undefined, component: ICAL.Component) {
   return start.toString()
 }
 
+function previewEvent(component: ICAL.Component) {
+  const event = new ICAL.Event(component)
+  const start = event.startDate
+
+  return {
+    uid: event.uid,
+    title: event.summary ?? 'Untitled event',
+    start: previewStart(start, component),
+    allDay: start?.isDate ?? false,
+    recurring: event.isRecurring(),
+    exception: Boolean(event.recurrenceId),
+    cancelled: component.getFirstPropertyValue('status') === 'CANCELLED',
+    location: String(component.getFirstPropertyValue('location') ?? ''),
+  }
+}
+
 export function previewCalendar(text: string) {
   return parseCalendar(text)
     .getAllSubcomponents('vevent')
-    .map((component) => {
-      const event = new ICAL.Event(component)
-      const start = event.startDate
-
-      return {
-        uid: event.uid,
-        title: event.summary ?? 'Untitled event',
-        start: previewStart(start, component),
-        allDay: start?.isDate ?? false,
-        recurring: event.isRecurring(),
-        exception: Boolean(event.recurrenceId),
-        cancelled: component.getFirstPropertyValue('status') === 'CANCELLED',
-        location: String(component.getFirstPropertyValue('location') ?? ''),
-      }
-    })
+    .map(previewEvent)
     .sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''))
     .slice(0, 40)
 }

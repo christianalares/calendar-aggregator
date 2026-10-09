@@ -103,15 +103,25 @@ export function createFeedService(
   async function build(output: NonNullable<Awaited<ReturnType<typeof store.outputForToken>>>) {
     const included = await store.includedSources(output)
     const checked = await Promise.all(
-      included.map(async ({ source, prefix, titleFormatting }) => ({
+      included.map(async ({ source, prefix, titleFormatting, eventFilters }) => ({
         source: await refresh(source),
         prefix,
         titleFormatting,
+        eventFilters,
       })),
     )
-    const available = checked.flatMap(({ source, prefix, titleFormatting }) =>
+    const available = checked.flatMap(({ source, prefix, titleFormatting, eventFilters }) =>
       source?.enabled && source.snapshot !== null
-        ? [{ id: source.id, url: source.url, snapshot: source.snapshot, prefix, titleFormatting }]
+        ? [
+            {
+              id: source.id,
+              url: source.url,
+              snapshot: source.snapshot,
+              prefix,
+              titleFormatting,
+              eventFilters,
+            },
+          ]
         : [],
     )
 

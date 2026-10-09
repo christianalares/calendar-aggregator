@@ -1,0 +1,1 @@
+ALTER TABLE "output_source" ADD COLUMN "event_filters" jsonb DEFAULT '[]'::jsonb NOT NULL;
