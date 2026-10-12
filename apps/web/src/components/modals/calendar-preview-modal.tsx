@@ -1,11 +1,25 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { format, isValid, parseISO } from 'date-fns'
+import { cn } from 'cn'
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameMonth,
+  isToday,
+  isValid,
+  parseISO,
+  startOfMonth,
+  startOfWeek,
+} from 'date-fns'
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ErrorMessage } from '@/components/error-message'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
 import { DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import type { Output } from '@/lib/calendar-types'
 import { queryOptions } from '@/queries'
 import type { MutationOutput } from '@/server-fns'
@@ -20,23 +34,14 @@ export function CalendarPreviewModal({ ownerId, output }: { ownerId: string; out
   }, [preview.dataUpdatedAt, client, ownerId])
 
   return (
-    <DialogContent className="max-h-[90dvh] overflow-y-auto font-sans sm:max-w-3xl">
-      <DialogHeader>
+    <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] min-w-0 overflow-y-auto font-sans sm:max-w-7xl">
+      <DialogHeader className="pr-8">
         <DialogTitle>{output.name}: event preview</DialogTitle>
         <DialogDescription>
           Up to 40 feed entries, shown by their start date. Your calendar app expands recurring
           series; those extra occurrences are not shown here.
         </DialogDescription>
       </DialogHeader>
-      <Button
-        type="button"
-        variant="outline"
-        className="justify-self-start"
-        disabled={preview.isFetching}
-        onClick={() => preview.refetch()}
-      >
-        Refresh
-      </Button>
       {preview.isPending && <p className="m-0 text-muted-foreground">Checking sources...</p>}
       {preview.error && (
         <>
@@ -77,98 +82,192 @@ function eventDate(event: PreviewEvent) {
 }
 
 function CalendarSample({ events }: { events: PreviewEvent[] }) {
-  const dates = events.flatMap((event) => {
-    const date = eventDate(event)
-    return date ? [date] : []
+  const [month, setMonth] = useState(() => {
+    const firstDate = events.map(eventDate).find((date) => date !== null)
+    return startOfMonth(firstDate ?? new Date())
   })
-  const [selected, setSelected] = useState<Date>(dates[0] ?? new Date())
-  const [showAll, setShowAll] = useState(false)
-  const visibleEvents = showAll
-    ? events
-    : events.filter((event) => {
-        const date = eventDate(event)
-        return date && format(date, 'yyyy-MM-dd') === format(selected, 'yyyy-MM-dd')
-      })
+  const days = eachDayOfInterval({
+    start: startOfWeek(month, { weekStartsOn: 1 }),
+    end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
+  })
+  const weeks = Array.from({ length: days.length / 7 }, (_, index) =>
+    days.slice(index * 7, index * 7 + 7),
+  )
+  const eventsByDay = new Map<string, PreviewEvent[]>()
+  const undatedEvents: PreviewEvent[] = []
+  for (const event of events) {
+    const date = eventDate(event)
+    if (!date) {
+      undatedEvents.push(event)
+      continue
+    }
+    const key = format(date, 'yyyy-MM-dd')
+    const dayEvents = eventsByDay.get(key) ?? []
+    dayEvents.push(event)
+    eventsByDay.set(key, dayEvents)
+  }
+
   return (
-    <div className="grid min-w-0 gap-5 sm:grid-cols-[auto_1fr]">
-      <div>
-        <Calendar
-          mode="single"
-          required
-          weekStartsOn={1}
-          selected={selected}
-          defaultMonth={selected}
-          onSelect={(date) => {
-            setSelected(date)
-            setShowAll(false)
-          }}
-          modifiers={{ sample: dates }}
-          modifiersClassNames={{ sample: 'preview-event-day' }}
-          className="mx-auto rounded-xl border bg-card [--cell-size:--spacing(9)]"
-        />
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          Dots mark dates in this feed sample.
-        </p>
-      </div>
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
-          <h3 className="font-heading font-bold">
-            {showAll ? 'All sample entries' : format(selected, 'EEE, d MMM yyyy')}
+    <div className="min-w-0 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Previous month"
+            onClick={() => setMonth((current) => addMonths(current, -1))}
+          >
+            <ChevronLeftIcon />
+          </Button>
+          <h3
+            className="min-w-32 text-center font-heading font-bold sm:min-w-40 sm:text-lg"
+            aria-live="polite"
+          >
+            {format(month, 'MMMM yyyy')}
           </h3>
-          <Button size="sm" variant="ghost" onClick={() => setShowAll(!showAll)}>
-            {showAll ? 'Selected day' : 'All entries'}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Next month"
+            onClick={() => setMonth((current) => addMonths(current, 1))}
+          >
+            <ChevronRightIcon />
           </Button>
         </div>
-        {!visibleEvents.length && (
-          <p className="py-4 text-sm text-muted-foreground">
-            No sample entries for this day. Recurring occurrences may still appear in your calendar
-            app.
-          </p>
-        )}
-        <div className="divide-y">
-          {visibleEvents.map((event, index) => (
-            <div className="space-y-2 py-3" key={`${event.uid}-${index}`}>
-              <div className="text-sm text-muted-foreground">
-                {event.start
-                  ? event.allDay
-                    ? event.start
-                    : new Date(event.start).toLocaleString(undefined, {
-                        dateStyle: 'medium',
-                        timeStyle: 'short',
-                      })
-                  : 'No start date'}
-                {event.allDay && <small className="block">All day</small>}
-              </div>
-              <div className="min-w-0 space-y-1 break-words">
-                <strong>{event.title}</strong>
-                {event.location && (
-                  <p className="m-0 text-sm text-muted-foreground">{event.location}</p>
-                )}
-                <div className="flex flex-wrap gap-1">
-                  {event.recurring && (
-                    <Badge
-                      variant="secondary"
-                      className="bg-category-blue text-category-blue-foreground"
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setMonth(startOfMonth(new Date()))}
+        >
+          Today
+        </Button>
+      </div>
+      <div className="overflow-x-auto rounded-xl border">
+        <table
+          className="w-full min-w-[700px] table-fixed border-collapse bg-card"
+          aria-label={format(month, 'MMMM yyyy')}
+        >
+          <thead>
+            <tr>
+              {days.slice(0, 7).map((day) => (
+                <th
+                  key={day.getDay()}
+                  scope="col"
+                  className="border-b px-2 py-2 text-right text-xs font-medium text-muted-foreground"
+                >
+                  {format(day, 'EEE')}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {weeks.map((week) => (
+              <tr key={format(week[0], 'yyyy-MM-dd')}>
+                {week.map((day) => {
+                  const key = format(day, 'yyyy-MM-dd')
+                  const currentMonth = isSameMonth(day, month)
+                  return (
+                    <td
+                      key={key}
+                      aria-label={format(day, 'EEEE, MMMM d, yyyy')}
+                      className={cn(
+                        'border-r border-b p-1 align-top last:border-r-0 sm:p-1.5',
+                        !currentMonth && 'bg-muted/40',
+                        currentMonth && day.getDay() % 6 === 0 && 'bg-muted/20',
+                      )}
                     >
-                      Recurring
-                    </Badge>
-                  )}
-                  {event.exception && (
-                    <Badge variant="secondary" className="bg-warning text-warning-foreground">
-                      Changed instance
-                    </Badge>
-                  )}
-                  {event.cancelled && (
-                    <Badge variant="secondary" className="bg-danger text-danger-foreground">
-                      Cancelled
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
+                      <div className="min-h-28 sm:min-h-[clamp(4rem,9dvh,8rem)]">
+                        <div className="mb-1 flex justify-end">
+                          <time
+                            dateTime={key}
+                            aria-current={isToday(day) ? 'date' : undefined}
+                            className={cn(
+                              'flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-sm',
+                              !currentMonth && 'text-muted-foreground',
+                              isToday(day) && 'bg-red-500 font-bold text-white',
+                            )}
+                          >
+                            {format(day, currentMonth ? 'd' : 'MMM d')}
+                          </time>
+                        </div>
+                        <div className="space-y-1">
+                          {eventsByDay.get(key)?.map((event, index) => (
+                            <CalendarEntry key={`${event.uid}-${index}`} event={event} />
+                          ))}
+                        </div>
+                      </div>
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {!!undatedEvents.length && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium">No start date</h3>
+          {undatedEvents.map((event, index) => (
+            <CalendarEntry key={`${event.uid}-${index}`} event={event} />
           ))}
         </div>
-      </div>
+      )}
     </div>
+  )
+}
+
+function CalendarEntry({ event }: { event: PreviewEvent }) {
+  const date = eventDate(event)
+  const time =
+    date && !event.allDay
+      ? date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+      : null
+  return (
+    <Popover>
+      <PopoverTrigger
+        render={<button type="button" />}
+        aria-label={`${event.title}${event.allDay ? ', All day' : time ? `, ${time}` : ''}${event.cancelled ? ', Cancelled' : ''}`}
+        className={cn(
+          'flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-xs outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring',
+          event.allDay && 'bg-category-blue text-category-blue-foreground',
+          event.cancelled && 'text-muted-foreground line-through',
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className="h-3 w-1 shrink-0 rounded-full bg-category-blue-marker"
+        />
+        <span className="min-w-0 flex-1 truncate">{event.title}</span>
+        {time && <span className="shrink-0 text-[10px] text-muted-foreground">{time}</span>}
+      </PopoverTrigger>
+      <PopoverContent className="max-w-[calc(100vw-2rem)] p-3" align="start">
+        <PopoverTitle className="break-words">{event.title}</PopoverTitle>
+        <p className="m-0 text-muted-foreground">
+          {date ? format(date, 'EEE, d MMM yyyy') : 'No start date'}
+          {event.allDay ? ' · All day' : time ? ` · ${time}` : ''}
+        </p>
+        {event.location && <p className="m-0 break-words">{event.location}</p>}
+        <div className="flex flex-wrap gap-1">
+          {event.recurring && (
+            <Badge variant="secondary" className="bg-category-blue text-category-blue-foreground">
+              Recurring
+            </Badge>
+          )}
+          {event.exception && (
+            <Badge variant="secondary" className="bg-warning text-warning-foreground">
+              Changed instance
+            </Badge>
+          )}
+          {event.cancelled && (
+            <Badge variant="secondary" className="bg-danger text-danger-foreground">
+              Cancelled
+            </Badge>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }

@@ -185,23 +185,58 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
   expect(feed.status()).toBe(200)
   expect(feed.headers()['content-type']).toContain('text/calendar')
   expect(parseCalendar(await feed.text()).getAllSubcomponents('vevent')).toHaveLength(4)
+  await page.clock.setFixedTime(new Date('2026-10-12T10:00:00Z'))
   await page.getByRole('button', { name: 'Preview events', exact: true }).click()
-  await expect(page.getByText('⚽ Fotboll', { exact: true })).toBeVisible()
-  await page.getByRole('dialog').getByRole('button', { name: 'All entries', exact: true }).click()
-  await expect(page.getByText('⚽ Later football', { exact: true })).toBeVisible()
-  await expect(page.getByText('Cancelled', { exact: true })).toBeVisible()
+  const preview = page.getByRole('dialog')
+  await expect(preview.getByRole('table', { name: 'October 2026', exact: true })).toBeVisible()
+  await expect(
+    preview
+      .getByRole('cell', { name: 'Wednesday, October 7, 2026', exact: true })
+      .getByText('⚽ Fotboll', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    preview
+      .getByRole('cell', { name: 'Wednesday, October 14, 2026', exact: true })
+      .getByText('⚽ Later football', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    preview
+      .getByRole('cell', { name: 'Saturday, October 10, 2026', exact: true })
+      .getByRole('button', { name: '⚽ Weekend away, All day', exact: true }),
+  ).toBeVisible()
+  await expect(preview.locator('time[aria-current="date"]')).toHaveAttribute(
+    'datetime',
+    '2026-10-12',
+  )
   expect(
     await page
       .getByRole('dialog')
       .evaluate((element) => element.scrollWidth <= element.clientWidth),
   ).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('calendar-preview.png'), fullPage: true })
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: /October 10/ })
-    .click()
-  await expect(page.getByText('⚽ Weekend away', { exact: true })).toBeVisible()
-  await expect(page.getByText('⚽ Fotboll', { exact: true })).toHaveCount(0)
+  await preview.getByRole('button', { name: /^⚽ Fotboll,/ }).click()
+  await expect(page.getByText('City pitch', { exact: true })).toBeVisible()
+  await expect(page.getByText('Recurring', { exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await preview.getByRole('button', { name: /^⚽ Cancelled football,/ }).click()
+  await expect(page.getByText('Cancelled', { exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await preview.getByRole('button', { name: 'Previous month', exact: true }).click()
+  await expect(preview.getByRole('heading', { name: 'September 2026', exact: true })).toBeVisible()
+  await preview.getByRole('button', { name: 'Next month', exact: true }).click()
+  await expect(preview.getByRole('heading', { name: 'October 2026', exact: true })).toBeVisible()
+  for (let step = 0; step < 3; step++) {
+    await preview.getByRole('button', { name: 'Next month', exact: true }).click()
+  }
+  await expect(preview.getByRole('heading', { name: 'January 2027', exact: true })).toBeVisible()
+  await preview.getByRole('button', { name: 'Previous month', exact: true }).click()
+  await expect(preview.getByRole('heading', { name: 'December 2026', exact: true })).toBeVisible()
+  await preview.getByRole('button', { name: 'Today', exact: true }).click()
+  await expect(preview.getByRole('heading', { name: 'October 2026', exact: true })).toBeVisible()
+  await expect(preview.locator('time[aria-current="date"]')).toHaveAttribute(
+    'datetime',
+    '2026-10-12',
+  )
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Create invite', exact: true }).click()
