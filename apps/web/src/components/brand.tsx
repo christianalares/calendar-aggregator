@@ -1,15 +1,13 @@
-import { CalendarDays } from 'lucide-react'
+import { Logo } from '@/components/logo'
 
 export function Brand() {
   return (
     <a
       href="/"
-      className="flex w-fit items-center gap-2.5 font-heading text-xl font-extrabold tracking-tight"
+      aria-label="CalPal home"
+      className="flex w-fit items-center rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
     >
-      <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-        <CalendarDays aria-hidden="true" className="size-5" />
-      </span>
-      CalPal
+      <Logo aria-hidden="true" />
     </a>
   )
 }

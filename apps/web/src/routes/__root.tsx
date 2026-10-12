@@ -15,7 +15,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: 'robots', content: 'noindex, nofollow' },
       { name: 'referrer', content: 'no-referrer' },
     ],
-    links: [{ rel: 'stylesheet', href: css }],
+    links: [
+      { rel: 'stylesheet', href: css },
+      { rel: 'icon', type: 'image/svg+xml', href: '/brand/calpal-app-icon.svg' },
+    ],
     title: 'CalPal',
   }),
   shellComponent: ({ children }: { children: ReactNode }) => {
