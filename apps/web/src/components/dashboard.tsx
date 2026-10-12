@@ -1,16 +1,15 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import {
   CalendarDays,
   Check,
   Copy,
   Ellipsis,
   Eye,
-  Filter,
   Pencil,
   Plus,
   RefreshCw,
   Trash2,
-  Type,
 } from 'lucide-react'
 import { useState } from 'react'
 import { pushAlert } from '@/components/alerts'
@@ -88,6 +87,7 @@ function OutputCard({
   output: Output
   sources: Source[]
 }) {
+  const navigate = useNavigate()
   return (
     <article className="min-w-0">
       <Card className="h-full gap-4">
@@ -125,15 +125,6 @@ function OutputCard({
                 >
                   <Pencil aria-hidden="true" />
                   Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!output.sources.length}
-                  onClick={() =>
-                    pushModal('calendar', { ownerId, sources, output, eventFiltersOnly: true })
-                  }
-                >
-                  <Filter aria-hidden="true" />
-                  Event filters
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => pushAlert('replaceCalendarLink', { ownerId, id: output.id })}
@@ -182,13 +173,15 @@ function OutputCard({
           <Button
             variant="ghost"
             size="sm"
-            disabled={!output.sources.length}
             onClick={() =>
-              pushModal('calendar', { ownerId, sources, output, titleFormattingOnly: true })
+              navigate({
+                to: '/calendars/$calendarId/customize',
+                params: { calendarId: output.id },
+              })
             }
           >
-            <Type aria-hidden="true" />
-            Title formatting
+            <Pencil aria-hidden="true" />
+            Customize events
           </Button>
         </CardFooter>
       </Card>

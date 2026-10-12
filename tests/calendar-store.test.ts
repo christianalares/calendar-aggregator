@@ -75,6 +75,24 @@ describe('owner-scoped configuration', () => {
       excludedCount: 1,
       keptCount: 3,
     })
+    expect(
+      await store.previewCustomization(
+        a.owner,
+        sourceId,
+        filters,
+        titleFormattingFromPrefix('Test'),
+        'changed',
+      ),
+    ).toMatchObject({ available: true, total: 4, keptCount: 3, changedCount: 3 })
+    await expect(
+      store.previewCustomization(
+        await owner(),
+        sourceId,
+        filters,
+        titleFormattingFromPrefix(),
+        'all',
+      ),
+    ).rejects.toThrow('not found')
     expect((await store.list(a.owner)).outputs[0]!.sources[0]!.eventFilters).toEqual([])
     await expect(store.previewFilters(await owner(), sourceId, filters)).rejects.toThrow(
       'not found',

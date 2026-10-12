@@ -33,8 +33,9 @@ Use the Vitalplus registry structure with the same `pushmodal` package:
 - `src/components/sheets/index.tsx`: `pushSheet`, `popSheet`, `SheetProvider`.
 - `src/components/alerts/index.tsx`: `pushAlert`, `popAlert`, `AlertProvider`.
 
-All three providers are mounted in the root. Existing source/calendar forms and
-event preview use modals. Source/calendar deletion, link replacement, and invite
+All three providers are mounted in the root. Source/calendar name and membership forms and
+event preview use modals. Per-calendar event customization uses a dedicated authenticated
+workspace at `/calendars/$calendarId/customize`. Source/calendar deletion, link replacement, and invite
 revocation use alerts. The sheets registry is empty until a sheet feature exists.
 Keep overlay components in their respective directories and return the matching
 `DialogContent`, `SheetContent`, or `AlertDialogContent`. Do not add local open-state
@@ -93,6 +94,32 @@ shrinks safely on narrow screens; eight calendars become three, two, or one colu
 Sources and operator-only invitations use ordinary shadcn tables. Narrow screens
 scroll within each table, preserving the source fields without overflowing the page.
 Source Check/Edit/Delete and calendar Edit/Replace link/Delete use Base UI menus.
+
+## Calendar customization
+
+Calendar cards have one **Customize events** action. The general Edit dialog only
+changes the calendar name and included sources; its body scrolls independently of
+the save actions. Existing prefix and capture rules are retained when editing
+calendar membership.
+
+The customization workspace has a source rail, separate Filters and Titles tabs,
+and a live preview. The rail includes **Manage sources**. Removing and reincluding
+a source retains its settings within the current draft. Filters expand one rule at
+a time; matching options are disclosed within the active rule. Title editing keeps
+the prefix/suffix composer and capture-selection workflow, with ordered rename
+rules and one expanded rule. Both tab sets use Base UI keyboard navigation.
+
+A fixed footer saves the complete draft atomically and preserves it on failure.
+Switching sources or tabs does not save or discard settings. Navigating away with
+unsaved changes opens a registry confirmation; reloading/closing the page uses the
+browser's unsaved-change prompt. The desktop layout has three columns; narrow
+screens stack the source picker, editor, and preview.
+
+The authenticated draft preview uses cached source data and the subscription's
+matching pipeline: original text filters, whole-series exclusion, first matching
+title rule, then prefix/suffix. All, Changed, and Excluded views count the entire
+source and display up to 40 entries in the selected view, without expanding
+recurrence. The original subscription link stays intact when customization saves.
 
 ## Verification
 

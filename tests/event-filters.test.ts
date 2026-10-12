@@ -4,6 +4,7 @@ import {
   mergeCalendars,
   parseCalendar,
   previewCalendar,
+  previewCustomization,
   previewEventFilters,
 } from '../apps/web/src/server/ical'
 import {
@@ -186,5 +187,86 @@ describe('feed exclusion and preview consistency', () => {
     ]
     const preview = previewEventFilters(fixture, filters)
     expect(preview.events.find((event) => event.title === 'Later football')?.rule.id).toBe('moved')
+  })
+})
+
+describe('combined customization preview', () => {
+  it('formats missing summaries as empty text, without matching the display placeholder', () => {
+    const snapshot =
+      'BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:empty-title\nDTSTAMP:20261001T100000Z\nDTSTART:20261007T180000Z\nEND:VEVENT\nEND:VCALENDAR'
+    const formatting = {
+      before: 'Test ',
+      after: '',
+      rules: [
+        {
+          id: 'rule',
+          name: 'Placeholder',
+          enabled: true,
+          caseSensitive: false,
+          match: [{ kind: 'text' as const, value: 'Untitled event' }],
+          show: [{ kind: 'text' as const, value: 'Wrong rename' }],
+        },
+      ],
+    }
+    const preview = previewCustomization(snapshot, [], formatting)
+    expect(preview.events[0]).toMatchObject({ originalTitle: '', title: 'Test ', renamedBy: null })
+    expect(
+      previewCalendar(
+        mergeCalendars('Example', [{ ...source, snapshot, titleFormatting: formatting }]),
+      )[0]?.title,
+    ).toBe(preview.events[0]?.title)
+  })
+
+  it('shows the same kept titles as subscriptions and explains exclusions before renaming', () => {
+    const formatting = { before: '⚽ ', after: '!', rules: [] }
+    const filters = [{ ...rule, value: 'Fotboll' }]
+    const preview = previewCustomization(fixture, filters, formatting)
+    expect(preview).toMatchObject({ total: 4, excludedCount: 3, keptCount: 1, changedCount: 1 })
+    const kept = preview.events.filter((event) => !event.exclusion)
+    expect(kept.map((event) => event.title)).toEqual(
+      previewCalendar(
+        mergeCalendars('Example', [
+          { ...source, titleFormatting: formatting, eventFilters: filters },
+        ]),
+      ).map((event) => event.title),
+    )
+    expect(kept[0]).toMatchObject({ originalTitle: 'Weekend away', title: '⚽ Weekend away!' })
+    const excluded = previewCustomization(fixture, filters, formatting, 'excluded')
+    expect(excluded.events).toHaveLength(3)
+    expect(excluded.events.filter((event) => event.exclusion?.seriesMatch)).toHaveLength(2)
+    expect(excluded.events.every((event) => event.title === event.originalTitle)).toBe(true)
+    expect(previewCustomization(fixture, filters, formatting, 'changed').events).toEqual(kept)
+  })
+  it('filters preview views before limiting entries, while counting the complete source', () => {
+    const snapshot = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      ...Array.from(
+        { length: 65 },
+        (_, index) =>
+          `BEGIN:VEVENT\nUID:${index}\nDTSTAMP:20261001T100000Z\nDTSTART:20261007T180000Z\nSUMMARY:${index < 45 ? 'Kept' : 'Football'}\nEND:VEVENT`,
+      ),
+      'END:VCALENDAR',
+    ].join('\n')
+    const formatting = { before: '', after: '', rules: [] }
+    const preview = previewCustomization(snapshot, [rule], formatting, 'excluded')
+    expect(preview).toMatchObject({
+      total: 65,
+      excludedCount: 20,
+      keptCount: 45,
+      changedCount: 0,
+      visibleCount: 20,
+    })
+    expect(preview.events).toHaveLength(20)
+    expect(preview.events.every((event) => event.originalTitle === 'Football')).toBe(true)
+    const changed = previewCustomization(
+      snapshot,
+      [rule],
+      { ...formatting, before: 'Changed ' },
+      'changed',
+    )
+    expect(changed).toMatchObject({ changedCount: 45, visibleCount: 45 })
+    expect(changed.events).toHaveLength(40)
+    expect(changed.events.every((event) => !event.exclusion)).toBe(true)
   })
 })

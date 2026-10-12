@@ -169,6 +169,58 @@ export function previewEventFilters(text: string, rules: EventFilterRule[]) {
   }
 }
 
+/** Preview the same original-text filtering and title pipeline used by subscriptions. */
+export function previewCustomization(
+  text: string,
+  rules: EventFilterRule[],
+  titleFormatting: TitleFormatting,
+  view: 'all' | 'changed' | 'excluded' = 'all',
+) {
+  const components = latestEvents(parseCalendar(text))
+  const excluded = excludedEvents(components, rules)
+  const events = components.map((component) => {
+    const original = previewEvent(component)
+    const originalTitle = eventText(component).title
+    const directMatch = matchEventFilter(eventText(component), rules)
+    const reason = directMatch
+      ? { rule: directMatch, title: originalTitle }
+      : excluded.get(original.uid)
+    const formatted = formatTitle(originalTitle, titleFormatting)
+    return {
+      ...original,
+      originalTitle,
+      title: reason ? originalTitle : formatted.title,
+      renamedBy: reason ? null : (formatted.matchedRule?.name ?? null),
+      exclusion: reason
+        ? {
+            rule: reason.rule,
+            matchedTitle: reason.title,
+            seriesMatch: !directMatch,
+          }
+        : null,
+    }
+  })
+  const excludedCount = events.filter((event) => event.exclusion).length
+  const changedCount = events.filter(
+    (event) => !event.exclusion && event.title !== event.originalTitle,
+  ).length
+  const visible = events.filter((event) =>
+    view === 'excluded'
+      ? event.exclusion
+      : view === 'changed'
+        ? !event.exclusion && event.title !== event.originalTitle
+        : true,
+  )
+  return {
+    total: events.length,
+    excludedCount,
+    keptCount: events.length - excludedCount,
+    changedCount,
+    visibleCount: visible.length,
+    events: visible.sort((a, b) => (a.start ?? '').localeCompare(b.start ?? '')).slice(0, 40),
+  }
+}
+
 export function mergeCalendars(
   name: string,
   snapshots: {

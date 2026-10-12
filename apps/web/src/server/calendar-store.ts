@@ -1,13 +1,14 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import { type Database, outputSources, outputs, sources } from '@calendar-aggregator/db'
 import type { EventFilterRule } from '@calendar-aggregator/db/event-filters'
+import type { TitleFormatting } from '@calendar-aggregator/db/title-formatting'
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 
 import type { outputInput, sourceInput } from '../lib/calendar-inputs'
 
 import { CalendarError } from '../lib/errors'
-import { previewCalendar, previewEventFilters } from './ical'
+import { previewCalendar, previewCustomization, previewEventFilters } from './ical'
 
 export { CalendarError } from '../lib/errors'
 
@@ -203,6 +204,31 @@ export function createCalendarStore(db: Database) {
         ...previewEventFilters(
           source.snapshot ?? 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR',
           rules,
+        ),
+      }
+    },
+    async previewCustomization(
+      ownerId: string,
+      sourceId: string,
+      rules: EventFilterRule[],
+      titleFormatting: TitleFormatting,
+      view: 'all' | 'changed' | 'excluded',
+    ) {
+      const [source] = await db
+        .select()
+        .from(sources)
+        .where(and(eq(sources.id, sourceId), eq(sources.ownerId, ownerId)))
+      if (!source) throw new CalendarError('Source not found.')
+      return {
+        available: source.snapshot !== null,
+        enabled: source.enabled,
+        lastSuccessAt: source.lastSuccessAt,
+        error: source.lastError,
+        ...previewCustomization(
+          source.snapshot ?? 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR',
+          rules,
+          titleFormatting,
+          view,
         ),
       }
     },

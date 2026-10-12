@@ -158,10 +158,15 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
   await page.getByRole('button', { name: 'Create calendar', exact: true }).click()
   await page.getByLabel('Calendar name').fill('Our week')
   await page.getByRole('checkbox', { name: 'Football', exact: true }).check()
-  await page.getByLabel('Text before title for Football').fill('⚽ ')
   await page.getByRole('button', { name: 'Save calendar', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Our week', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Customize events', exact: true }).click()
+  await page.getByRole('tab', { name: /^Titles/ }).click()
+  await page.getByLabel('Text before title for Football').fill('⚽ ')
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect(page.getByText('Changes saved', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'All calendars', exact: true }).click()
   const saved = await store.list(ownerId)
   const source = saved.sources[0]!
   await db
@@ -372,4 +377,33 @@ test('eight calendars, source health, invite table and persistent appearance', a
   await expect(page.locator('html')).toHaveClass('dark')
   await expect(page.getByRole('heading', { name: 'Padel', exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('eight-calendars-dark.png'), fullPage: true })
+  // A short viewport with many sources keeps the modal actions visible.
+  for (let i = 0; i < 16; i++)
+    await store.saveSource(ownerId, {
+      name: `Extra source ${i}`,
+      url: `https://provider.test/extra-${i}.ics`,
+      enabled: true,
+    })
+  await page.reload()
+  await page.setViewportSize({
+    width: testInfo.project.name === 'desktop' ? 900 : 390,
+    height: 480,
+  })
+  await page.getByRole('button', { name: 'Actions for calendar Padel', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Edit', exact: true }).click()
+  const calendarDialog = page.getByRole('dialog')
+  await expect(
+    calendarDialog.getByRole('button', { name: 'Save calendar', exact: true }),
+  ).toBeInViewport()
+  await expect(calendarDialog.getByLabel('Calendar name')).toBeInViewport()
+  expect(
+    await calendarDialog.evaluate((element) => element.scrollWidth <= element.clientWidth),
+  ).toBe(true)
+  await calendarDialog
+    .getByRole('checkbox', { name: 'Extra source 15', exact: true })
+    .scrollIntoViewIfNeeded()
+  await expect(
+    calendarDialog.getByRole('button', { name: 'Save calendar', exact: true }),
+  ).toBeInViewport()
+  await calendarDialog.getByRole('button', { name: 'Cancel', exact: true }).click()
 })

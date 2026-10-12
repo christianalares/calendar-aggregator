@@ -385,7 +385,6 @@ export function TitleFormattingEditor({
   onChange: (value: TitleFormatting) => void
 }) {
   const id = useId()
-  const [open, setOpen] = useState(false)
   const [active, setActive] = useState<string | undefined>(value.rules[0]?.id)
   const [sample, setSample] = useState(sampleTitles[0] ?? '')
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null)
@@ -406,7 +405,6 @@ export function TitleFormattingEditor({
     }
     onChange({ ...value, rules: [...value.rules, rule] })
     setActive(rule.id)
-    setOpen(true)
   }
   const reorder = (index: number, direction: number) => {
     const rules = [...value.rules]
@@ -414,12 +412,9 @@ export function TitleFormattingEditor({
     onChange({ ...value, rules })
   }
   return (
-    <section
-      aria-label={`Title formatting for ${sourceName}`}
-      className="min-w-0 space-y-3 rounded-xl bg-secondary/70 p-3"
-    >
+    <section aria-label={`Title formatting for ${sourceName}`} className="min-w-0 space-y-4">
       <div className="grid min-w-0 items-center gap-2 sm:grid-cols-[6.5rem_minmax(0,1fr)]">
-        <span className="text-xs font-medium text-muted-foreground">Title format</span>
+        <span className="text-xs font-medium text-muted-foreground">Prefix &amp; suffix</span>
         <div className="flex min-w-0 flex-wrap items-center gap-1 rounded-lg border bg-card px-2 py-1">
           <input
             aria-label={`Text before title for ${sourceName}`}
@@ -444,149 +439,142 @@ export function TitleFormattingEditor({
           />
         </div>
       </div>
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={`${id}-rules`}
-        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-        onClick={() => setOpen(!open)}
-      >
-        {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}Rename
-        rules
-        <span className="ml-1 rounded bg-card px-1.5 py-0.5 text-[11px]">{value.rules.length}</span>
-      </button>
-      {open && (
-        <div id={`${id}-rules`} className="space-y-2">
-          {value.rules.map((rule, index) => (
-            <div key={rule.id} className="min-w-0 rounded-lg border bg-card">
-              <div className="flex items-center gap-1 px-2 py-1.5">
-                <Checkbox
-                  aria-label={`Enable ${rule.name}`}
-                  checked={rule.enabled}
-                  onCheckedChange={(enabled) => updateRule({ ...rule, enabled: Boolean(enabled) })}
-                />
-                <button
-                  type="button"
-                  aria-expanded={active === rule.id}
-                  aria-label={`Edit rule ${rule.name}`}
-                  className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-1 text-left text-xs font-medium"
-                  onClick={() => {
-                    setActive(active === rule.id ? undefined : rule.id)
-                    setSelection(null)
-                    const example = sampleTitles.find((title) => matchTitle(title, rule))
-                    if (example) setSample(example)
-                  }}
-                >
-                  {active === rule.id ? (
-                    <ChevronDown className="size-3 shrink-0" />
-                  ) : (
-                    <ChevronRight className="size-3 shrink-0" />
-                  )}
-                  <span className="break-words">{rule.name}</span>
-                </button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Move ${rule.name} up`}
-                  disabled={index === 0}
-                  onClick={() => reorder(index, -1)}
-                >
-                  <ArrowUp className="size-3" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Move ${rule.name} down`}
-                  disabled={index === value.rules.length - 1}
-                  onClick={() => reorder(index, 1)}
-                >
-                  <ArrowDown className="size-3" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Delete ${rule.name}`}
-                  onClick={() => {
-                    onChange({ ...value, rules: value.rules.filter((item) => item.id !== rule.id) })
-                    if (active === rule.id) setActive(undefined)
-                  }}
-                >
-                  <Trash2 className="size-3" />
-                </Button>
-              </div>
-              {active === rule.id ? (
-                <div className="space-y-2 border-t p-3">
-                  <Input
-                    aria-label="Rule name"
-                    className="h-8 text-xs"
-                    maxLength={80}
-                    value={rule.name}
-                    onChange={(event) => updateRule({ ...rule, name: event.target.value })}
-                  />
-                  {(['match', 'show'] as const).map((mode) => (
-                    <div
-                      key={mode}
-                      className="grid min-w-0 gap-1 sm:grid-cols-[3rem_minmax(0,1fr)] sm:items-start"
-                    >
-                      <span className="text-xs text-muted-foreground sm:pt-3">
-                        {mode === 'match' ? 'Match' : 'Show'}
-                      </span>
-                      <PatternComposer mode={mode} rule={rule} onChange={updateRule} />
-                    </div>
-                  ))}
-                  <Label
-                    htmlFor={`${id}-${rule.id}-case`}
-                    className="flex items-center gap-2 text-xs text-muted-foreground"
-                  >
-                    <Checkbox
-                      id={`${id}-${rule.id}-case`}
-                      checked={rule.caseSensitive}
-                      onCheckedChange={(checked) =>
-                        updateRule({ ...rule, caseSensitive: Boolean(checked) })
-                      }
-                    />
-                    Match case
-                  </Label>
-                  {ruleValidation && !ruleValidation.success && (
-                    <p role="alert" className="text-xs text-destructive">
-                      {ruleValidation.error.issues[0]?.message}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="break-words border-t px-3 py-2 text-xs text-muted-foreground">
-                  {summary(rule)}
-                </p>
-              )}
+      <h3 className="text-sm font-semibold">
+        Rename rules <span className="text-muted-foreground">({value.rules.length})</span>
+      </h3>
+      <p className="text-xs text-muted-foreground">
+        Match a whole title, then choose what to show. Capture parts you want to keep.
+      </p>
+      <div id={`${id}-rules`} className="space-y-2">
+        {value.rules.map((rule, index) => (
+          <div key={rule.id} className="min-w-0 rounded-lg border bg-card">
+            <div className="flex items-center gap-1 px-2 py-1.5">
+              <Checkbox
+                aria-label={`Enable ${rule.name}`}
+                checked={rule.enabled}
+                onCheckedChange={(enabled) => updateRule({ ...rule, enabled: Boolean(enabled) })}
+              />
+              <button
+                type="button"
+                aria-expanded={active === rule.id}
+                aria-label={`Edit rule ${rule.name}`}
+                className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-1 text-left text-xs font-medium"
+                onClick={() => {
+                  setActive(active === rule.id ? undefined : rule.id)
+                  setSelection(null)
+                  const example = sampleTitles.find((title) => matchTitle(title, rule))
+                  if (example) setSample(example)
+                }}
+              >
+                {active === rule.id ? (
+                  <ChevronDown className="size-3 shrink-0" />
+                ) : (
+                  <ChevronRight className="size-3 shrink-0" />
+                )}
+                <span className="break-words">{rule.name}</span>
+              </button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Move ${rule.name} up`}
+                disabled={index === 0}
+                onClick={() => reorder(index, -1)}
+              >
+                <ArrowUp className="size-3" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Move ${rule.name} down`}
+                disabled={index === value.rules.length - 1}
+                onClick={() => reorder(index, 1)}
+              >
+                <ArrowDown className="size-3" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Delete ${rule.name}`}
+                onClick={() => {
+                  onChange({ ...value, rules: value.rules.filter((item) => item.id !== rule.id) })
+                  if (active === rule.id) setActive(undefined)
+                }}
+              >
+                <Trash2 className="size-3" />
+              </Button>
             </div>
-          ))}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="h-7 px-0 text-primary"
-              disabled={value.rules.length >= 20}
-              onClick={addRule}
-            >
-              <Plus className="size-3" />
-              Add rule
-            </Button>
-            <span className="text-[11px] text-muted-foreground">
-              First match wins · whole title · flexible spaces
-            </span>
+            {active === rule.id ? (
+              <div className="space-y-2 border-t p-3">
+                <Input
+                  aria-label="Rule name"
+                  className="h-8 text-xs"
+                  maxLength={80}
+                  value={rule.name}
+                  onChange={(event) => updateRule({ ...rule, name: event.target.value })}
+                />
+                {(['match', 'show'] as const).map((mode) => (
+                  <div
+                    key={mode}
+                    className="grid min-w-0 gap-1 sm:grid-cols-[3rem_minmax(0,1fr)] sm:items-start"
+                  >
+                    <span className="text-xs text-muted-foreground sm:pt-3">
+                      {mode === 'match' ? 'Match' : 'Show'}
+                    </span>
+                    <PatternComposer mode={mode} rule={rule} onChange={updateRule} />
+                  </div>
+                ))}
+                <Label
+                  htmlFor={`${id}-${rule.id}-case`}
+                  className="flex items-center gap-2 text-xs text-muted-foreground"
+                >
+                  <Checkbox
+                    id={`${id}-${rule.id}-case`}
+                    checked={rule.caseSensitive}
+                    onCheckedChange={(checked) =>
+                      updateRule({ ...rule, caseSensitive: Boolean(checked) })
+                    }
+                  />
+                  Match case
+                </Label>
+                {ruleValidation && !ruleValidation.success && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {ruleValidation.error.issues[0]?.message}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="break-words border-t px-3 py-2 text-xs text-muted-foreground">
+                {summary(rule)}
+              </p>
+            )}
           </div>
+        ))}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 px-0 text-primary"
+            disabled={value.rules.length >= 20}
+            onClick={addRule}
+          >
+            <Plus className="size-3" />
+            Add rule
+          </Button>
+          <span className="text-[11px] text-muted-foreground">
+            First match wins · whole title · flexible spaces
+          </span>
         </div>
-      )}
+      </div>
       <div className="space-y-2 border-t pt-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Label htmlFor={`${id}-sample`} className="text-xs text-muted-foreground">
             Try a title
           </Label>
-          {open && activeRule && (
+          {activeRule && (
             <Button
               type="button"
               variant="ghost"
@@ -666,7 +654,7 @@ export function TitleFormattingEditor({
                   : 'Your formatted title appears here')}
             </span>
           </div>
-          {open && result && (
+          {result && (
             <p
               className={cn(
                 'break-words pl-6 text-[11px]',

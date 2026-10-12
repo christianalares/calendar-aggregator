@@ -25,6 +25,16 @@ export const queryOptions = {
       defineQuery({ queryKey: ['calendars', ownerId], queryFn: serverFns.calendars.list }),
   },
   sources: {
+    customizationPreview: (
+      ownerId: string,
+      data: MutationInput['sources']['previewCustomization'],
+    ) =>
+      defineQuery({
+        queryKey: ['customization-preview', ownerId, data],
+        queryFn: () => serverFns.sources.previewCustomization({ data }),
+        staleTime: 0,
+        retry: false,
+      }),
     filterPreview: (ownerId: string, data: MutationInput['sources']['previewFilters']) =>
       defineQuery({
         queryKey: ['filter-preview', ownerId, data],

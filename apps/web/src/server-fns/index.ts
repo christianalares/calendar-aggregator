@@ -1,6 +1,7 @@
 import { currentUser, signInStatus } from './auth'
 import {
   listCalendars,
+  previewCustomization,
   previewFilters,
   removeOutput,
   removeSource,
@@ -15,7 +16,13 @@ export const serverFns = {
   auth: { currentUser, signInStatus },
   invitations: { create: createInvitation, list: listInvitations, revoke: revokeInvitation },
   calendars: { list: listCalendars },
-  sources: { save: saveSource, remove: removeSource, check: checkSource, previewFilters },
+  sources: {
+    save: saveSource,
+    remove: removeSource,
+    check: checkSource,
+    previewFilters,
+    previewCustomization,
+  },
   outputs: { save: saveOutput, remove: removeOutput, rotate: rotateOutput, preview: previewOutput },
 }
 

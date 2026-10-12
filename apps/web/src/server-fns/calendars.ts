@@ -1,4 +1,5 @@
 import { eventFiltersSchema } from '@calendar-aggregator/db/event-filters'
+import { titleFormattingSchema } from '@calendar-aggregator/db/title-formatting'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { outputInput, sourceInput } from '../lib/calendar-inputs'
@@ -32,6 +33,27 @@ export const previewFilters = createServerFn({ method: 'POST' })
   .validator(z.object({ sourceId: z.uuid(), rules: eventFiltersSchema }))
   .handler(({ context, data }) =>
     operation((store) => store.previewFilters(context.user.id, data.sourceId, data.rules)),
+  )
+export const previewCustomization = createServerFn({ method: 'POST' })
+  .middleware([withAuthMiddleware])
+  .validator(
+    z.object({
+      sourceId: z.uuid(),
+      rules: eventFiltersSchema,
+      titleFormatting: titleFormattingSchema,
+      view: z.enum(['all', 'changed', 'excluded']),
+    }),
+  )
+  .handler(({ context, data }) =>
+    operation((store) =>
+      store.previewCustomization(
+        context.user.id,
+        data.sourceId,
+        data.rules,
+        data.titleFormatting,
+        data.view,
+      ),
+    ),
   )
 export const saveSource = createServerFn({ method: 'POST' })
   .middleware([withAuthMiddleware])

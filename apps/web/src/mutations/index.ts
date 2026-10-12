@@ -10,6 +10,7 @@ export const mutationOptions = {
         onSuccess: async (_data, _variables, _result, context) => {
           await context.client.invalidateQueries(queryOptions.calendars.list(ownerId))
           await context.client.invalidateQueries({ queryKey: ['filter-preview', ownerId] })
+          await context.client.invalidateQueries({ queryKey: ['customization-preview', ownerId] })
           await context.client.invalidateQueries({ queryKey: ['outputs', ownerId] })
         },
       }),
@@ -19,6 +20,7 @@ export const mutationOptions = {
         onSuccess: async (_data, _variables, _result, context) => {
           await context.client.invalidateQueries(queryOptions.calendars.list(ownerId))
           await context.client.invalidateQueries({ queryKey: ['filter-preview', ownerId] })
+          await context.client.invalidateQueries({ queryKey: ['customization-preview', ownerId] })
           await context.client.invalidateQueries({ queryKey: ['outputs', ownerId] })
         },
       }),
@@ -28,6 +30,7 @@ export const mutationOptions = {
         onSuccess: async (_data, _variables, _result, context) => {
           await context.client.invalidateQueries(queryOptions.calendars.list(ownerId))
           await context.client.invalidateQueries({ queryKey: ['filter-preview', ownerId] })
+          await context.client.invalidateQueries({ queryKey: ['customization-preview', ownerId] })
           await context.client.invalidateQueries({ queryKey: ['outputs', ownerId] })
         },
       }),

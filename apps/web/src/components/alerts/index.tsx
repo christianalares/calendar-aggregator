@@ -2,6 +2,7 @@ import { createPushModal } from 'pushmodal/base-ui'
 import { AlertDialog } from '@/components/ui/alert-dialog'
 import { DeleteCalendarAlert } from './delete-calendar-alert'
 import { DeleteSourceAlert } from './delete-source-alert'
+import { DiscardCalendarChangesAlert } from './discard-calendar-changes-alert'
 import { ReplaceCalendarLinkAlert } from './replace-calendar-link-alert'
 import { RevokeInviteAlert } from './revoke-invite-alert'
 
@@ -12,6 +13,7 @@ export const {
 } = createPushModal({
   Wrapper: AlertDialog,
   modals: {
+    discardCalendarChanges: DiscardCalendarChangesAlert,
     deleteSource: DeleteSourceAlert,
     deleteCalendar: DeleteCalendarAlert,
     replaceCalendarLink: ReplaceCalendarLinkAlert,
