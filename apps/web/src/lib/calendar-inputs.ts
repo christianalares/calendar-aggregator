@@ -3,6 +3,28 @@ import { titleFormattingSchema } from '@calendar-aggregator/db/title-formatting'
 import { z } from 'zod'
 
 const name = z.string().trim().min(1, 'Enter a name.').max(100)
+export const previewRangeInput = z
+  .object({
+    from: z.iso.date(),
+    to: z.iso.date(),
+    timeZone: z
+      .string()
+      .max(100)
+      .refine((value) => {
+        try {
+          new Intl.DateTimeFormat('en', { timeZone: value })
+          return true
+        } catch {
+          return false
+        }
+      }, 'Invalid time zone.'),
+  })
+  .refine(({ from, to }) => {
+    const days = (Date.parse(to) - Date.parse(from)) / 86_400_000
+    return days > 0 && days <= 62
+  }, 'Choose a preview range of up to two months.')
+export type PreviewRange = z.infer<typeof previewRangeInput>
+
 export const sourceInput = z.object({
   id: z.uuid().optional(),
   name,

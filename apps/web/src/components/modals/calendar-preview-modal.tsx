@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from 'cn'
 import {
+  addDays,
   addMonths,
   eachDayOfInterval,
   endOfMonth,
@@ -12,6 +13,7 @@ import {
   parseISO,
   startOfMonth,
   startOfWeek,
+  subMilliseconds,
 } from 'date-fns'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -25,7 +27,14 @@ import { queryOptions } from '@/queries'
 import type { MutationOutput } from '@/server-fns'
 
 export function CalendarPreviewModal({ ownerId, output }: { ownerId: string; output: Output }) {
-  const preview = useQuery(queryOptions.outputs.preview(ownerId, output.id))
+  const [month, setMonth] = useState(() => startOfMonth(new Date()))
+  const preview = useQuery(
+    queryOptions.outputs.preview(ownerId, output.id, {
+      from: format(startOfWeek(month, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+      to: format(addDays(endOfWeek(endOfMonth(month), { weekStartsOn: 1 }), 1), 'yyyy-MM-dd'),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }),
+  )
   const client = useQueryClient()
   useEffect(() => {
     if (preview.dataUpdatedAt) {
@@ -38,11 +47,10 @@ export function CalendarPreviewModal({ ownerId, output }: { ownerId: string; out
       <DialogHeader className="pr-8">
         <DialogTitle>{output.name}: event preview</DialogTitle>
         <DialogDescription>
-          Up to 40 feed entries, shown by their start date. Your calendar app expands recurring
-          series; those extra occurrences are not shown here.
+          Events for this month, including recurring occurrences. Click an event for details.
         </DialogDescription>
       </DialogHeader>
-      {preview.isPending && <p className="m-0 text-muted-foreground">Checking sources...</p>}
+      {preview.isPending && <output className="text-muted-foreground">Loading events...</output>}
       {preview.error && (
         <>
           <ErrorMessage error={preview.error} />
@@ -64,12 +72,15 @@ export function CalendarPreviewModal({ ownerId, output }: { ownerId: string; out
                 {source.error}
               </p>
             ))}
-          {!preview.data.events.length && (
-            <p className="m-0 text-muted-foreground">No events in this calendar yet.</p>
+          {preview.data.limited && (
+            <output className="text-sm text-muted-foreground">
+              Some recurring events could not be expanded because this feed exceeded the preview
+              limit.
+            </output>
           )}
-          {!!preview.data.events.length && <CalendarSample events={preview.data.events} />}
         </>
       )}
+      <CalendarSample events={preview.data?.events ?? []} month={month} onMonthChange={setMonth} />
     </DialogContent>
   )
 }
@@ -81,11 +92,15 @@ function eventDate(event: PreviewEvent) {
   return date && isValid(date) ? date : null
 }
 
-function CalendarSample({ events }: { events: PreviewEvent[] }) {
-  const [month, setMonth] = useState(() => {
-    const firstDate = events.map(eventDate).find((date) => date !== null)
-    return startOfMonth(firstDate ?? new Date())
-  })
+function CalendarSample({
+  events,
+  month,
+  onMonthChange,
+}: {
+  events: PreviewEvent[]
+  month: Date
+  onMonthChange: (month: Date) => void
+}) {
   const days = eachDayOfInterval({
     start: startOfWeek(month, { weekStartsOn: 1 }),
     end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
@@ -101,10 +116,17 @@ function CalendarSample({ events }: { events: PreviewEvent[] }) {
       undatedEvents.push(event)
       continue
     }
-    const key = format(date, 'yyyy-MM-dd')
-    const dayEvents = eventsByDay.get(key) ?? []
-    dayEvents.push(event)
-    eventsByDay.set(key, dayEvents)
+    const end = event.end ? parseISO(event.end) : null
+    const last = end && isValid(end) && end > date ? subMilliseconds(end, 1) : date
+    const firstVisible = date > days[0] ? date : days[0]
+    const lastVisible = last < days[days.length - 1] ? last : days[days.length - 1]
+    if (format(firstVisible, 'yyyy-MM-dd') > format(lastVisible, 'yyyy-MM-dd')) continue
+    for (const day of eachDayOfInterval({ start: firstVisible, end: lastVisible })) {
+      const key = format(day, 'yyyy-MM-dd')
+      const dayEvents = eventsByDay.get(key) ?? []
+      dayEvents.push(event)
+      eventsByDay.set(key, dayEvents)
+    }
   }
 
   return (
@@ -116,7 +138,7 @@ function CalendarSample({ events }: { events: PreviewEvent[] }) {
             variant="ghost"
             size="icon"
             aria-label="Previous month"
-            onClick={() => setMonth((current) => addMonths(current, -1))}
+            onClick={() => onMonthChange(addMonths(month, -1))}
           >
             <ChevronLeftIcon />
           </Button>
@@ -131,7 +153,7 @@ function CalendarSample({ events }: { events: PreviewEvent[] }) {
             variant="ghost"
             size="icon"
             aria-label="Next month"
-            onClick={() => setMonth((current) => addMonths(current, 1))}
+            onClick={() => onMonthChange(addMonths(month, 1))}
           >
             <ChevronRightIcon />
           </Button>
@@ -140,7 +162,7 @@ function CalendarSample({ events }: { events: PreviewEvent[] }) {
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => setMonth(startOfMonth(new Date()))}
+          onClick={() => onMonthChange(startOfMonth(new Date()))}
         >
           Today
         </Button>
@@ -194,9 +216,16 @@ function CalendarSample({ events }: { events: PreviewEvent[] }) {
                           </time>
                         </div>
                         <div className="space-y-1">
-                          {eventsByDay.get(key)?.map((event, index) => (
-                            <CalendarEntry key={`${event.uid}-${index}`} event={event} />
-                          ))}
+                          {eventsByDay.get(key)?.map((event, index) => {
+                            const start = eventDate(event)
+                            return (
+                              <CalendarEntry
+                                key={`${event.uid}-${index}`}
+                                event={event}
+                                continuation={start ? format(start, 'yyyy-MM-dd') !== key : false}
+                              />
+                            )
+                          })}
                         </div>
                       </div>
                     </td>
@@ -219,7 +248,13 @@ function CalendarSample({ events }: { events: PreviewEvent[] }) {
   )
 }
 
-function CalendarEntry({ event }: { event: PreviewEvent }) {
+function CalendarEntry({
+  event,
+  continuation = false,
+}: {
+  event: PreviewEvent
+  continuation?: boolean
+}) {
   const date = eventDate(event)
   const time =
     date && !event.allDay
@@ -241,7 +276,9 @@ function CalendarEntry({ event }: { event: PreviewEvent }) {
           className="h-3 w-1 shrink-0 rounded-full bg-category-blue-marker"
         />
         <span className="min-w-0 flex-1 truncate">{event.title}</span>
-        {time && <span className="shrink-0 text-[10px] text-muted-foreground">{time}</span>}
+        {time && !continuation && (
+          <span className="shrink-0 text-[10px] text-muted-foreground">{time}</span>
+        )}
       </PopoverTrigger>
       <PopoverContent className="max-w-[calc(100vw-2rem)] p-3" align="start">
         <PopoverTitle className="break-words">{event.title}</PopoverTitle>

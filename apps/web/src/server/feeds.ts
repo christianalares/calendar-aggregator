@@ -1,7 +1,14 @@
 import { type Database, sources } from '@calendar-aggregator/db'
 import { and, eq, isNull, lte, or } from 'drizzle-orm'
+import type { PreviewRange } from '../lib/calendar-inputs'
 import { CalendarError, createCalendarStore } from './calendar-store'
-import { CalendarParseError, mergeCalendars, previewCalendar, sanitizeCalendar } from './ical'
+import {
+  CalendarParseError,
+  mergeCalendars,
+  previewCalendar,
+  previewCalendarRange,
+  sanitizeCalendar,
+} from './ical'
 import { FetchError, fetchCalendar } from './upstream'
 
 export const cachePolicy = {
@@ -161,11 +168,14 @@ export function createFeedService(
 
       return await build(output)
     },
-    async preview(ownerId: string, outputId: string) {
+    async preview(ownerId: string, outputId: string, range?: PreviewRange) {
       const output = await store.requireOutput(ownerId, outputId)
       const result = await build(output)
 
-      return { events: previewCalendar(result.text), health: result.health }
+      const preview = range
+        ? previewCalendarRange(result.text, range)
+        : { events: previewCalendar(result.text), limited: false }
+      return { ...preview, health: result.health }
     },
     async checkSource(ownerId: string, sourceId: string) {
       const [source] = await db

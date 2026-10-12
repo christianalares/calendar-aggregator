@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
+import { previewRangeInput } from '../lib/calendar-inputs'
 import { CalendarError } from '../server/calendar-store'
 import { feedService } from '../server/feed-service'
 import { FeedUnavailable } from '../server/feeds'
@@ -7,10 +8,10 @@ import { withAuthMiddleware } from './middlewares/with-auth'
 
 export const previewOutput = createServerFn({ method: 'GET' })
   .middleware([withAuthMiddleware])
-  .validator(z.object({ id: z.uuid() }))
+  .validator(z.object({ id: z.uuid(), range: previewRangeInput }))
   .handler(async ({ context, data }) => {
     try {
-      return await feedService.preview(context.user.id, data.id)
+      return await feedService.preview(context.user.id, data.id, data.range)
     } catch (error) {
       throw new Error(
         error instanceof CalendarError || error instanceof FeedUnavailable

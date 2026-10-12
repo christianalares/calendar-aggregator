@@ -44,10 +44,10 @@ export const queryOptions = {
       }),
   },
   outputs: {
-    preview: (ownerId: string, id: string) =>
+    preview: (ownerId: string, id: string, range: MutationInput['outputs']['preview']['range']) =>
       defineQuery({
-        queryKey: ['outputs', ownerId, id, 'preview'],
-        queryFn: () => serverFns.outputs.preview({ data: { id } }),
+        queryKey: ['outputs', ownerId, id, 'preview', range],
+        queryFn: () => serverFns.outputs.preview({ data: { id, range } }),
         staleTime: 60_000,
       }),
   },

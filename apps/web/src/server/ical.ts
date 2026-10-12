@@ -6,6 +6,7 @@ import {
   titleFormattingFromPrefix,
 } from '@calendar-aggregator/db/title-formatting'
 import ICAL from 'ical.js'
+import type { PreviewRange } from '../lib/calendar-inputs'
 
 export class CalendarParseError extends Error {}
 
@@ -309,7 +310,11 @@ export function mergeCalendars(
   return output.toString()
 }
 
-function previewStart(start: ICAL.Time | undefined, component: ICAL.Component) {
+function previewStart(
+  start: ICAL.Time | undefined,
+  component: ICAL.Component,
+  property = 'dtstart',
+) {
   if (!start) {
     return null
   }
@@ -320,7 +325,9 @@ function previewStart(start: ICAL.Time | undefined, component: ICAL.Component) {
   if (start.zone.tzid !== 'floating') {
     return start.toJSDate().toISOString()
   }
-  const tzid = component.getFirstProperty('dtstart')?.getParameter('tzid')
+  const tzid = (
+    component.getFirstProperty(property) ?? component.getFirstProperty('dtstart')
+  )?.getParameter('tzid')
 
   if (typeof tzid === 'string') {
     try {
@@ -370,14 +377,18 @@ function previewStart(start: ICAL.Time | undefined, component: ICAL.Component) {
   return start.toString()
 }
 
-function previewEvent(component: ICAL.Component) {
-  const event = new ICAL.Event(component)
-  const start = event.startDate
+function previewEvent(
+  component: ICAL.Component,
+  occurrence?: { startDate: ICAL.Time; endDate: ICAL.Time },
+) {
+  const event = new ICAL.Event(component, { exceptions: [] })
+  const start = occurrence?.startDate ?? event.startDate
 
   return {
     uid: event.uid,
     title: event.summary ?? 'Untitled event',
     start: previewStart(start, component),
+    end: start ? previewStart(occurrence?.endDate ?? event.endDate, component, 'dtend') : null,
     allDay: start?.isDate ?? false,
     recurring: event.isRecurring(),
     exception: Boolean(event.recurrenceId),
@@ -389,7 +400,118 @@ function previewEvent(component: ICAL.Component) {
 export function previewCalendar(text: string) {
   return parseCalendar(text)
     .getAllSubcomponents('vevent')
-    .map(previewEvent)
+    .map((component) => previewEvent(component))
     .sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''))
-    .slice(0, 40)
+}
+
+/** Expand only the visible month, retaining exceptions and the published feed's rules. */
+export function previewCalendarRange(text: string, range: PreviewRange) {
+  const components = latestEvents(parseCalendar(text))
+  const exceptions = new Map<string, ICAL.Component[]>()
+  for (const component of components) {
+    const recurrenceId = component.getFirstPropertyValue('recurrence-id') as ICAL.Time | null
+    if (!recurrenceId) continue
+    // Cancellation exceptions may provide only RECURRENCE-ID, without DTSTART.
+    if (!component.hasProperty('dtstart')) component.addPropertyWithValue('dtstart', recurrenceId)
+    const uid = String(component.getFirstPropertyValue('uid'))
+    const related = exceptions.get(uid) ?? []
+    related.push(component)
+    exceptions.set(uid, related)
+  }
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: range.timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  function day(value: string) {
+    if (!/(Z|[+-]\d\d:\d\d)$/.test(value)) return value.slice(0, 10)
+    const parts = Object.fromEntries(
+      formatter.formatToParts(new Date(value)).map((part) => [part.type, part.value]),
+    )
+    return `${parts.year}-${parts.month}-${parts.day}`
+  }
+  function lastDay(event: ReturnType<typeof previewEvent>) {
+    if (!event.start || !event.end || event.end <= event.start)
+      return event.start ? day(event.start) : null
+    // DTEND is exclusive, including all-day events and midnight endings.
+    const floating = !/(Z|[+-]\d\d:\d\d)$/.test(event.end)
+    const end = floating ? `${event.end}${event.end.length === 10 ? 'T00:00:00' : ''}Z` : event.end
+    const last = new Date(Date.parse(end) - 1).toISOString()
+    return floating ? last.slice(0, 10) : day(last)
+  }
+
+  const events: ReturnType<typeof previewEvent>[] = []
+  const seen = new Set<string>()
+  let limited = false
+  let iterations = 0
+  function include(
+    event: ReturnType<typeof previewEvent>,
+    recurrenceId?: string | null,
+    expanded = false,
+  ) {
+    if (event.start && (day(event.start) >= range.to || (lastDay(event) ?? '') < range.from)) return
+    const key = `${event.uid}\0${recurrenceId ?? event.start}`
+    if (seen.has(key)) return
+    if (expanded && events.length >= 10_000) {
+      limited = true
+      return
+    }
+    seen.add(key)
+    events.push(event)
+  }
+
+  // Detached and moved exceptions must be considered even when their original
+  // occurrence falls outside the requested month or appears in EXDATE.
+  for (const component of components) {
+    if (!component.hasProperty('rrule') && !component.hasProperty('rdate')) {
+      const recurrenceId = component.getFirstPropertyValue('recurrence-id') as ICAL.Time | null
+      include(
+        previewEvent(component),
+        recurrenceId ? previewStart(recurrenceId, component, 'recurrence-id') : null,
+      )
+    }
+  }
+  for (const component of components) {
+    if (component.hasProperty('recurrence-id')) continue
+    const event = new ICAL.Event(component, {
+      exceptions: exceptions.get(String(component.getFirstPropertyValue('uid'))) ?? [],
+    })
+    if (!event.isRecurring() || event.isRecurrenceException() || !event.startDate) continue
+    // Allow shifted THISANDFUTURE occurrences and time-zone boundary crossings.
+    const backwardShift = Math.max(
+      0,
+      ...(exceptions.get(event.uid) ?? []).map((exception) => {
+        const changed = new ICAL.Event(exception, { exceptions: [] })
+        return changed.modifiesFuture()
+          ? -changed.startDate.subtractDate(changed.recurrenceId).toSeconds() * 1000
+          : 0
+      }),
+    )
+    const stop = Date.parse(range.to) + backwardShift + 2 * 86_400_000
+    const iterator = event.iterator()
+    while (true) {
+      const next = iterator.next()
+      if (!next || next.toJSDate().getTime() >= stop) break
+      // Infinite or extremely dense rules must not monopolize a request. Report
+      // any safety limit to the user instead of silently omitting occurrences.
+      if (++iterations > 100_000) {
+        limited = true
+        break
+      }
+      const details = event.getOccurrenceDetails(next)
+      include(
+        { ...previewEvent(details.item.component, details), recurring: true },
+        previewStart(next, component),
+        true,
+      )
+      if (limited) break
+    }
+    if (limited) break
+  }
+  return {
+    events: events.sort((a, b) => (a.start ?? '').localeCompare(b.start ?? '')),
+    limited,
+  }
 }

@@ -185,6 +185,17 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
   expect(feed.status()).toBe(200)
   expect(feed.headers()['content-type']).toContain('text/calendar')
   expect(parseCalendar(await feed.text()).getAllSubcomponents('vevent')).toHaveLength(4)
+  const history = Array.from(
+    { length: 41 },
+    (_, index) =>
+      `BEGIN:VEVENT\nUID:old-${index}\nDTSTAMP:20261001T100000Z\nDTSTART:20250101T120000Z\nSUMMARY:Old event ${index}\nEND:VEVENT`,
+  ).join('\n')
+  const laterEntries =
+    'BEGIN:VEVENT\nUID:later-october\nDTSTAMP:20261001T100000Z\nDTSTART:20261019T120000Z\nSUMMARY:Later October event\nEND:VEVENT\nBEGIN:VEVENT\nUID:november\nDTSTAMP:20261001T100000Z\nDTSTART:20261105T120000Z\nSUMMARY:November event\nEND:VEVENT'
+  const monthFixture = readFileSync(new URL('../fixtures/complex.ics', import.meta.url), 'utf8')
+    .replace('COUNT=4', 'COUNT=8')
+    .replace('END:VCALENDAR', `${history}\n${laterEntries}\nEND:VCALENDAR`)
+  await db.update(sources).set({ snapshot: monthFixture }).where(eq(sources.id, source.id))
   await page.clock.setFixedTime(new Date('2026-10-12T10:00:00Z'))
   await page.getByRole('button', { name: 'Preview events', exact: true }).click()
   const preview = page.getByRole('dialog')
@@ -194,6 +205,17 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
       .getByRole('cell', { name: 'Wednesday, October 7, 2026', exact: true })
       .getByText('⚽ Fotboll', { exact: true }),
   ).toBeVisible()
+  await expect(
+    preview
+      .getByRole('cell', { name: 'Sunday, October 11, 2026', exact: true })
+      .getByRole('button', { name: '⚽ Weekend away, All day', exact: true }),
+  ).toBeVisible()
+  await expect(
+    preview
+      .getByRole('cell', { name: 'Monday, October 19, 2026', exact: true })
+      .getByText('⚽ Later October event', { exact: true }),
+  ).toBeVisible()
+  await expect(preview.getByText(/^⚽ Old event/)).toHaveCount(0)
   await expect(
     preview
       .getByRole('cell', { name: 'Wednesday, October 14, 2026', exact: true })
@@ -225,7 +247,18 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
   await expect(preview.getByRole('heading', { name: 'September 2026', exact: true })).toBeVisible()
   await preview.getByRole('button', { name: 'Next month', exact: true }).click()
   await expect(preview.getByRole('heading', { name: 'October 2026', exact: true })).toBeVisible()
-  for (let step = 0; step < 3; step++) {
+  await preview.getByRole('button', { name: 'Next month', exact: true }).click()
+  await expect(
+    preview
+      .getByRole('cell', { name: 'Wednesday, November 4, 2026', exact: true })
+      .getByText('⚽ Fotboll', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    preview
+      .getByRole('cell', { name: 'Thursday, November 5, 2026', exact: true })
+      .getByText('⚽ November event', { exact: true }),
+  ).toBeVisible()
+  for (let step = 0; step < 2; step++) {
     await preview.getByRole('button', { name: 'Next month', exact: true }).click()
   }
   await expect(preview.getByRole('heading', { name: 'January 2027', exact: true })).toBeVisible()
@@ -237,6 +270,16 @@ test('owner dashboard, failed save recovery, invitations, feed access and rotati
     'datetime',
     '2026-10-12',
   )
+  // Preview expansion never replaces the published recurrence rules with occurrences.
+  const published = parseCalendar(await (await request.get(url)).text())
+  expect(published.getAllSubcomponents('vevent')).toHaveLength(47)
+  expect(
+    published
+      .getAllSubcomponents('vevent')
+      .find((event) => event.hasProperty('rrule'))
+      ?.getFirstPropertyValue('rrule')
+      ?.toString(),
+  ).toContain('COUNT=8')
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Create invite', exact: true }).click()
